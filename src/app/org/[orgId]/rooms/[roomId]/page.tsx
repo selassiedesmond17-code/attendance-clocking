@@ -106,7 +106,17 @@ export default async function RoomPage({
           className="mt-3 inline-block rounded border px-3 py-1 text-sm"
         >
           Attendance sessions
+        {canManage && (
+        <Link
+          href={`/org/${orgId}/reports?room=${roomId}`}
+          className="ml-2 mt-3 inline-block rounded border px-3 py-1 text-sm"
+        >
+          Reports
         </Link>
+      )}
+        </Link>
+        
+
       )}
       <h2 className="mt-6 text-lg font-medium">People in this room</h2>
       <ul className="mt-2 flex flex-col gap-2">

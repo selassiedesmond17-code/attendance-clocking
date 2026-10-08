@@ -46,6 +46,14 @@ export default async function OrgPage({
       <p className="text-sm text-gray-600">
         Status: {org.status} · Time zone: {org.timezone}
       </p>
+        
+     <Link
+        href={`/org/${orgId}/reports`}
+        className="mt-3 inline-block rounded border px-3 py-1 text-sm"
+      >
+        Attendance reports
+      </Link>
+
 
       {org.status !== "active" ? (
         <p className="mt-6 rounded border border-amber-300 bg-amber-50 p-3">
