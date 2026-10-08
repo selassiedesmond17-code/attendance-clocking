@@ -30,8 +30,11 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user && !request.nextUrl.pathname.startsWith("/login")) {
+    const next = request.nextUrl.pathname + request.nextUrl.search;
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
+    if (next !== "/") url.searchParams.set("next", next);
     return NextResponse.redirect(url);
   }
 

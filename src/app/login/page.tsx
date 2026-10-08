@@ -43,7 +43,8 @@ export default function LoginPage() {
     if (error) {
       setMessage(error.message);
     } else {
-      router.push("/");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
       router.refresh();
     }
   }

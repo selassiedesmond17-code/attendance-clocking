@@ -100,7 +100,14 @@ export default async function RoomPage({
         ← Back to rooms
       </Link>
       <h1 className="mt-2 text-2xl font-semibold">{room.name}</h1>
-
+       {canManage && (
+        <Link
+          href={`${path}/sessions`}
+          className="mt-3 inline-block rounded border px-3 py-1 text-sm"
+        >
+          Attendance sessions
+        </Link>
+      )}
       <h2 className="mt-6 text-lg font-medium">People in this room</h2>
       <ul className="mt-2 flex flex-col gap-2">
         {(members ?? []).length === 0 && (
