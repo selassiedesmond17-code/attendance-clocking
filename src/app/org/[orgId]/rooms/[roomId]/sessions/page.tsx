@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import SubmitButton from "@/components/submit-button";
 
 function fmt(iso: string, tz: string) {
   return new Date(iso).toLocaleString("en-GB", {
@@ -118,7 +119,7 @@ export default async function SessionsPage({
             <input type="checkbox" name="allow_out" defaultChecked /> Clock-out
             allowed
           </label>
-          <button className="neu-btn neu-btn-primary">Create session</button>
+          <SubmitButton className="neu-btn neu-btn-primary" pendingText="Creating…">Create session</SubmitButton>
         </form>
         {error && <p className="alert alert-error mt-4">{error}</p>}
       </section>

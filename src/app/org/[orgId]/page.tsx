@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import SubmitButton from "@/components/submit-button";
 
 export default async function OrgPage({
   params,
@@ -89,7 +90,7 @@ export default async function OrgPage({
                 aria-label="New room name"
                 className="neu-input"
               />
-              <button className="neu-btn neu-btn-primary">Add</button>
+              <SubmitButton className="neu-btn neu-btn-primary" pendingText="Adding…">Add</SubmitButton>
             </form>
           )}
         </section>

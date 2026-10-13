@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import ThemeToggle from "@/components/theme-toggle";
 import "./globals.css";
+import NavigationFeedback from "@/components/navigation-feedback";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -30,6 +31,7 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <ThemeToggle />
+        <NavigationFeedback />
         {children}
       </body>
     </html>

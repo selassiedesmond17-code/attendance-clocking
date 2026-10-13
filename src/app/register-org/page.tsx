@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import SubmitButton from "@/components/submit-button";
 
 export default async function RegisterOrgPage({
   searchParams,
@@ -49,7 +50,7 @@ export default async function RegisterOrgPage({
               <option>UTC</option>
             </select>
           </label>
-          <button className="neu-btn neu-btn-primary">Register</button>
+          <SubmitButton className="neu-btn neu-btn-primary" pendingText="Registering…">Register</SubmitButton>
         </form>
         {error && <p className="alert alert-error">{error}</p>}
         <p className="muted text-sm">
