@@ -1,26 +1,262 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ---------- LIGHT THEME ---------- */
+:root {
+  --bg: #e0e5ec;
+  --sh-light: #ffffff;
+  --sh-dark: #a3b1c6;
+  --text: #1f2937;
+  --muted: #566274;
+  --blue: #1d4ed8;
+  --success: #166534;
+  --danger: #b91c1c;
+  --warn: #92400e;
+  --link: #1d4ed8;
+  --line: rgba(163, 177, 198, 0.5);
+  /* Solid button colors (same in both themes, white text) */
+  --btn-primary: #2563eb;
+  --btn-success: #15803d;
+  --btn-danger: #b91c1c;
+  --btn-text: #ffffff;
+  color-scheme: light;
+}
+
+/* ---------- DARK THEME ---------- */
+[data-theme="dark"] {
+  --bg: #2b2f36;
+  --sh-light: #383e48;
+  --sh-dark: #1b1e23;
+  --text: #e8eaee;
+  --muted: #a3acba;
+  --blue: #60a5fa;
+  --success: #4ade80;
+  --danger: #f87171;
+  --warn: #fbbf24;
+  --link: #93c5fd;
+  --line: rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    min-height: 100vh;
+  }
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: 3px;
+  }
+  input[type="checkbox"] {
+    accent-color: var(--btn-primary);
+    width: 1.05rem;
+    height: 1.05rem;
+    vertical-align: middle;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .page {
+    width: 100%;
+    margin: 0 auto;
+    padding: 4.5rem 1.25rem 3rem;
+  }
+
+  /* Text helpers */
+  .muted { color: var(--muted); }
+  .neu-link { color: var(--link); text-decoration: underline; }
+  .field { display: block; font-size: 0.85rem; color: var(--muted); }
+
+  /* Back button */
+  .neu-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--blue);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 4px 4px 8px var(--sh-dark), -4px -4px 8px var(--sh-light);
+    transition: box-shadow 0.15s ease;
+  }
+  .neu-back:hover {
+    box-shadow: 2px 2px 4px var(--sh-dark), -2px -2px 4px var(--sh-light);
+  }
+  .neu-back:active {
+    box-shadow: inset 2px 2px 4px var(--sh-dark), inset -2px -2px 4px var(--sh-light);
+  }
+
+  /* Raised surfaces */
+  .neu-card {
+    background: var(--bg);
+    border-radius: 1.25rem;
+    padding: 1.25rem;
+    box-shadow: 8px 8px 16px var(--sh-dark), -8px -8px 16px var(--sh-light);
+  }
+  .neu-raised {
+    background: var(--bg);
+    border-radius: 0.9rem;
+    padding: 0.85rem 1rem;
+    box-shadow: 5px 5px 10px var(--sh-dark), -5px -5px 10px var(--sh-light);
+  }
+  .neu-row {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    background: var(--bg);
+    border-radius: 0.9rem;
+    padding: 0.85rem 1rem;
+    box-shadow: 5px 5px 10px var(--sh-dark), -5px -5px 10px var(--sh-light);
+    transition: box-shadow 0.15s ease;
+  }
+  .neu-row:hover {
+    box-shadow: 3px 3px 6px var(--sh-dark), -3px -3px 6px var(--sh-light);
+  }
+
+  /* Pressed-in surfaces */
+  .neu-inset {
+    background: var(--bg);
+    border-radius: 0.9rem;
+    padding: 0.85rem 1rem;
+    box-shadow: inset 4px 4px 8px var(--sh-dark), inset -4px -4px 8px var(--sh-light);
+  }
+  .neu-input {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 0;
+    border-radius: 0.75rem;
+    padding: 0.7rem 0.9rem;
+    box-shadow: inset 4px 4px 8px var(--sh-dark), inset -4px -4px 8px var(--sh-light);
+  }
+  .neu-input::placeholder { color: var(--muted); opacity: 0.85; }
+  textarea.neu-input { resize: vertical; }
+
+  /* Buttons (also used on links) */
+  .neu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--text);
+    border: 0;
+    border-radius: 0.75rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 5px 5px 10px var(--sh-dark), -5px -5px 10px var(--sh-light);
+    transition: box-shadow 0.15s ease, filter 0.15s ease;
+  }
+  .neu-btn:hover {
+    box-shadow: 3px 3px 6px var(--sh-dark), -3px -3px 6px var(--sh-light);
+  }
+  .neu-btn:active {
+    box-shadow: inset 3px 3px 6px var(--sh-dark), inset -3px -3px 6px var(--sh-light);
+  }
+  .neu-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .neu-btn-sm { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+  .neu-btn-lg { padding: 0.9rem 1.2rem; font-size: 1.05rem; }
+  .neu-btn-primary { background: var(--btn-primary); color: var(--btn-text); }
+  .neu-btn-success { background: var(--btn-success); color: var(--btn-text); }
+  .neu-btn-danger { background: var(--btn-danger); color: var(--btn-text); }
+  .neu-btn-primary:hover,
+  .neu-btn-success:hover,
+  .neu-btn-danger:hover { filter: brightness(1.1); }
+
+  /* Colored status labels */
+  .neu-badge {
+    --c: var(--muted);
+    display: inline-block;
+    padding: 0.12rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 16%, var(--bg));
+    box-shadow: inset 2px 2px 4px var(--sh-dark), inset -2px -2px 4px var(--sh-light);
+  }
+  .badge-ok { --c: var(--success); }
+  .badge-blue { --c: var(--blue); }
+  .badge-warn { --c: var(--warn); }
+  .badge-bad { --c: var(--danger); }
+
+  /* Messages */
+  .alert {
+    --c: var(--muted);
+    border-left: 4px solid var(--c);
+    border-radius: 0.9rem;
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+    background: color-mix(in srgb, var(--c) 10%, var(--bg));
+    box-shadow: inset 3px 3px 6px var(--sh-dark), inset -3px -3px 6px var(--sh-light);
+  }
+  .alert-ok { --c: var(--success); }
+  .alert-info { --c: var(--blue); }
+  .alert-error { --c: var(--danger); }
+  .alert-warn { --c: var(--warn); }
+
+  /* Tables */
+  .neu-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .neu-table th {
+    text-align: left;
+    padding: 0.6rem 0.5rem;
+    color: var(--blue);
+    font-weight: 700;
+    border-bottom: 2px solid var(--line);
+  }
+  .neu-table td {
+    padding: 0.6rem 0.5rem;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .neu-details summary { cursor: pointer; color: var(--link); text-decoration: underline; }
+
+  /* QR code stays white so it scans reliably in dark mode too */
+  .neu-qr {
+    width: 15rem;
+    background: #ffffff;
+    border-radius: 1rem;
+    padding: 0.5rem;
+    box-shadow: 6px 6px 12px var(--sh-dark), -6px -6px 12px var(--sh-light);
+  }
+  .neu-qr svg { width: 100%; height: auto; display: block; }
+
+  /* Light / dark toggle button */
+  .theme-toggle {
+    position: fixed;
+    top: 0.9rem;
+    right: 0.9rem;
+    z-index: 50;
+    width: 2.6rem;
+    height: 2.6rem;
+    padding: 0;
+    border-radius: 999px;
+    font-size: 1.15rem;
+  }
+  .icon-sun { display: none; }
+  [data-theme="dark"] .icon-sun { display: inline; }
+  [data-theme="dark"] .icon-moon { display: none; }
 }

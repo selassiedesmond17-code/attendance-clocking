@@ -10,6 +10,15 @@ function fmt(iso: string, tz: string) {
   });
 }
 
+function stateOf(startsAt: string, expiresAt: string) {
+  const now = Date.now();
+  if (now < new Date(startsAt).getTime())
+    return { label: "Upcoming", color: "badge-blue" };
+  if (now > new Date(expiresAt).getTime())
+    return { label: "Ended", color: "" };
+  return { label: "Open now", color: "badge-ok" };
+}
+
 export default async function SessionsPage({
   params,
   searchParams,
@@ -64,73 +73,77 @@ export default async function SessionsPage({
   }
 
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <Link href={`/org/${orgId}/rooms/${roomId}`} className="text-sm underline">
+    <main className="page max-w-2xl">
+      <Link href={`/org/${orgId}/rooms/${roomId}`} className="neu-back">
         ← Back to {room.name}
       </Link>
-      <h1 className="mt-2 text-2xl font-semibold">Attendance sessions</h1>
+      <h1 className="mt-3 text-2xl font-semibold">Attendance sessions</h1>
 
-      <h2 className="mt-6 text-lg font-medium">New session</h2>
-      <p className="text-sm text-gray-600">
-        Times are in the organization&apos;s time zone ({tz}).
-      </p>
-      <form action={createSession} className="mt-2 flex flex-col gap-3">
-        <input
-          name="title"
-          required
-          placeholder="Title, e.g. Morning shift"
-          className="rounded border p-2"
-        />
-        <label className="text-sm">
-          Starts
+      <section className="neu-card mt-6">
+        <h2 className="text-lg font-medium">New session</h2>
+        <p className="muted mt-1 text-sm">
+          Times are in the organization&apos;s time zone ({tz}).
+        </p>
+        <form action={createSession} className="mt-4 flex flex-col gap-4">
           <input
-            type="datetime-local"
-            name="start"
+            name="title"
             required
-            className="mt-1 block w-full rounded border p-2"
+            placeholder="Title, e.g. Morning shift"
+            aria-label="Session title"
+            className="neu-input"
           />
-        </label>
-        <label className="text-sm">
-          Ends (session expires)
-          <input
-            type="datetime-local"
-            name="end"
-            required
-            className="mt-1 block w-full rounded border p-2"
-          />
-        </label>
-        <label className="text-sm">
-          <input type="checkbox" name="allow_in" defaultChecked /> Clock-in
-          allowed
-        </label>
-        <label className="text-sm">
-          <input type="checkbox" name="allow_out" defaultChecked /> Clock-out
-          allowed
-        </label>
-        <button className="rounded bg-black p-2 text-white">
-          Create session
-        </button>
-      </form>
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+          <label className="field">
+            Starts
+            <input
+              type="datetime-local"
+              name="start"
+              required
+              className="neu-input mt-1"
+            />
+          </label>
+          <label className="field">
+            Ends (session expires)
+            <input
+              type="datetime-local"
+              name="end"
+              required
+              className="neu-input mt-1"
+            />
+          </label>
+          <label className="field flex items-center gap-2">
+            <input type="checkbox" name="allow_in" defaultChecked /> Clock-in
+            allowed
+          </label>
+          <label className="field flex items-center gap-2">
+            <input type="checkbox" name="allow_out" defaultChecked /> Clock-out
+            allowed
+          </label>
+          <button className="neu-btn neu-btn-primary">Create session</button>
+        </form>
+        {error && <p className="alert alert-error mt-4">{error}</p>}
+      </section>
 
       <h2 className="mt-8 text-lg font-medium">Past and upcoming</h2>
-      <ul className="mt-2 flex flex-col gap-2">
+      <ul className="mt-3 flex flex-col gap-4">
         {(sessions ?? []).length === 0 && (
-          <li className="text-gray-600">No sessions yet.</li>
+          <li className="neu-inset muted">No sessions yet.</li>
         )}
-        {(sessions ?? []).map((s) => (
-          <li key={s.id}>
-            <Link
-              href={`${base}/${s.id}`}
-              className="block rounded border p-3 hover:bg-gray-50"
-            >
-              <div className="font-medium">{s.title}</div>
-              <div className="text-sm text-gray-500">
-                {fmt(s.starts_at, tz)} → {fmt(s.expires_at, tz)}
-              </div>
-            </Link>
-          </li>
-        ))}
+        {(sessions ?? []).map((s) => {
+          const st = stateOf(s.starts_at, s.expires_at);
+          return (
+            <li key={s.id}>
+              <Link href={`${base}/${s.id}`} className="neu-row">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium">{s.title}</span>
+                  <span className={`neu-badge ${st.color}`}>{st.label}</span>
+                </div>
+                <div className="muted mt-1 text-sm">
+                  {fmt(s.starts_at, tz)} → {fmt(s.expires_at, tz)}
+                </div>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </main>
   );

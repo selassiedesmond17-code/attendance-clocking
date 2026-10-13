@@ -24,18 +24,18 @@ export default async function Home() {
   const items = (data ?? []) as unknown as Item[];
 
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <div className="flex items-center justify-between">
+    <main className="page max-w-2xl">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Your organizations</h1>
         <form action="/auth/signout" method="post">
-          <button className="text-sm underline">Sign out</button>
+          <button className="neu-btn neu-btn-sm">Sign out</button>
         </form>
       </div>
-      <p className="mt-1 text-sm text-gray-600">Signed in as {user?.email}</p>
+      <p className="muted mt-1 text-sm">Signed in as {user?.email}</p>
 
-      <ul className="mt-6 flex flex-col gap-2">
+      <ul className="mt-6 flex flex-col gap-4">
         {items.length === 0 && (
-          <li className="text-gray-600">
+          <li className="neu-inset muted">
             You are not part of any organization yet.
           </li>
         )}
@@ -45,12 +45,22 @@ export default async function Home() {
               <li key={m.organizations.id}>
                 <Link
                   href={`/org/${m.organizations.id}`}
-                  className="flex justify-between rounded border p-3 hover:bg-gray-50"
+                  className="neu-row flex items-center justify-between gap-3"
                 >
-                  <span>{m.organizations.name}</span>
-                  <span className="text-sm text-gray-500">
-                    {m.role === "org_admin" ? "admin" : "member"} ·{" "}
-                    {m.organizations.status}
+                  <span className="font-medium">{m.organizations.name}</span>
+                  <span className="flex gap-2">
+                    <span className="neu-badge badge-blue">
+                      {m.role === "org_admin" ? "admin" : "member"}
+                    </span>
+                    <span
+                      className={`neu-badge ${
+                        m.organizations.status === "active"
+                          ? "badge-ok"
+                          : "badge-warn"
+                      }`}
+                    >
+                      {m.organizations.status}
+                    </span>
                   </span>
                 </Link>
               </li>
@@ -58,15 +68,12 @@ export default async function Home() {
         )}
       </ul>
 
-      <div className="mt-6 flex gap-3">
-        <Link
-          href="/register-org"
-          className="rounded bg-black px-4 py-2 text-white"
-        >
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link href="/register-org" className="neu-btn neu-btn-primary">
           Register an organization
         </Link>
         {isPlatformAdmin && (
-          <Link href="/platform" className="rounded border px-4 py-2">
+          <Link href="/platform" className="neu-btn">
             Platform admin
           </Link>
         )}

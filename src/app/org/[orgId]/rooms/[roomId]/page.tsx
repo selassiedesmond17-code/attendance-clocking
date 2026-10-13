@@ -95,112 +95,115 @@ export default async function RoomPage({
   }
 
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <Link href={`/org/${orgId}`} className="text-sm underline">
+    <main className="page max-w-2xl">
+      <Link href={`/org/${orgId}`} className="neu-back">
         ← Back to rooms
       </Link>
       <h1 className="mt-2 text-2xl font-semibold">{room.name}</h1>
-       {canManage && (
-        <Link
-          href={`${path}/sessions`}
-          className="mt-3 inline-block rounded border px-3 py-1 text-sm"
-        >
-          Attendance sessions
-        {canManage && (
-        <Link
-          href={`/org/${orgId}/reports?room=${roomId}`}
-          className="ml-2 mt-3 inline-block rounded border px-3 py-1 text-sm"
-        >
-          Reports
-        </Link>
+      {canManage && (
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link href={`${path}/sessions`} className="neu-btn">
+            Attendance sessions
+          </Link>
+          <Link href={`/org/${orgId}/reports?room=${roomId}`} className="neu-btn">
+            Reports
+          </Link>
+        </div>
       )}
-        </Link>
-        
 
-      )}
-      <h2 className="mt-6 text-lg font-medium">People in this room</h2>
-      <ul className="mt-2 flex flex-col gap-2">
-        {(members ?? []).length === 0 && (
-          <li className="text-gray-600">No one has joined yet.</li>
-        )}
-        {(members ?? []).map((m) => (
-          <li
-            key={m.id}
-            className="flex items-center justify-between rounded border p-3"
-          >
-            <span>
-              {m.email ?? "Unknown"}{" "}
-              <span className="text-sm text-gray-500">
-                ({m.role === "room_admin" ? "room admin" : "user"})
+      <section className="neu-card mt-6">
+        <h2 className="text-lg font-medium">People in this room</h2>
+        <ul className="mt-4 flex flex-col gap-4">
+          {(members ?? []).length === 0 && (
+            <li className="neu-inset muted">No one has joined yet.</li>
+          )}
+          {(members ?? []).map((m) => (
+            <li
+              key={m.id}
+              className="neu-raised flex items-center justify-between gap-3"
+            >
+              <span className="break-all">
+                {m.email ?? "Unknown"}{" "}
+                <span className="neu-badge badge-blue ml-1">
+                  {m.role === "room_admin" ? "room admin" : "user"}
+                </span>
               </span>
-            </span>
-            {canManage && (isOrgAdmin || m.role === "user") && (
-              <form action={removeMember}>
-                <input type="hidden" name="id" value={m.id} />
-                <button className="text-sm text-red-700 underline">
-                  Remove
-                </button>
-              </form>
-            )}
-          </li>
-        ))}
-      </ul>
+              {canManage && (isOrgAdmin || m.role === "user") && (
+                <form action={removeMember}>
+                  <input type="hidden" name="id" value={m.id} />
+                  <button className="neu-btn neu-btn-sm neu-btn-danger">
+                    Remove
+                  </button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {canManage && (
         <>
-          <h2 className="mt-6 text-lg font-medium">Waiting to join</h2>
-          <ul className="mt-2 flex flex-col gap-2">
-            {(invites ?? []).length === 0 && (
-              <li className="text-gray-600">No pending invitations.</li>
-            )}
-            {(invites ?? []).map((i) => (
-              <li
-                key={i.id}
-                className="flex items-center justify-between rounded border border-dashed p-3"
-              >
-                <span>
-                  {i.email}{" "}
-                  <span className="text-sm text-gray-500">
-                    ({i.role === "room_admin" ? "room admin" : "user"})
+          <section className="neu-card mt-6">
+            <h2 className="text-lg font-medium">Waiting to join</h2>
+            <ul className="mt-4 flex flex-col gap-4">
+              {(invites ?? []).length === 0 && (
+                <li className="neu-inset muted">No pending invitations.</li>
+              )}
+              {(invites ?? []).map((i) => (
+                <li
+                  key={i.id}
+                  className="neu-inset flex items-center justify-between gap-3"
+                >
+                  <span className="break-all">
+                    {i.email}{" "}
+                    <span className="neu-badge badge-blue ml-1">
+                      {i.role === "room_admin" ? "room admin" : "user"}
+                    </span>
                   </span>
-                </span>
-                {(isOrgAdmin || i.role === "user") && (
-                  <form action={removeInvite}>
-                    <input type="hidden" name="id" value={i.id} />
-                    <button className="text-sm text-red-700 underline">
-                      Cancel
-                    </button>
-                  </form>
-                )}
-              </li>
-            ))}
-          </ul>
+                  {(isOrgAdmin || i.role === "user") && (
+                    <form action={removeInvite}>
+                      <input type="hidden" name="id" value={i.id} />
+                      <button className="neu-btn neu-btn-sm neu-btn-danger">
+                        Cancel
+                      </button>
+                    </form>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
 
-          <h2 className="mt-6 text-lg font-medium">Add people</h2>
-          <p className="text-sm text-gray-600">
-            Paste one or more email addresses, separated by commas, spaces or
-            new lines. They join the room the next time they sign in.
-          </p>
-          <form action={invite} className="mt-2 flex flex-col gap-2">
-            <textarea
-              name="emails"
-              required
-              rows={4}
-              placeholder="alice@example.com, bob@example.com"
-              className="rounded border p-2"
-            />
-            {canMakeRoomAdmins ? (
-              <select name="role" className="rounded border p-2">
-                <option value="user">User</option>
-                <option value="room_admin">Room admin</option>
-              </select>
-            ) : (
-              <input type="hidden" name="role" value="user" />
-            )}
-            <button className="rounded bg-black p-2 text-white">
-              Send invitations
-            </button>
-          </form>
+          <section className="neu-card mt-6">
+            <h2 className="text-lg font-medium">Add people</h2>
+            <p className="muted mt-1 text-sm">
+              Paste one or more email addresses, separated by commas, spaces or
+              new lines. They join the room the next time they sign in.
+            </p>
+            <form action={invite} className="mt-4 flex flex-col gap-4">
+              <textarea
+                name="emails"
+                required
+                rows={4}
+                placeholder="alice@example.com, bob@example.com"
+                aria-label="Email addresses"
+                className="neu-input"
+              />
+              {canMakeRoomAdmins ? (
+                <label className="field">
+                  Role
+                  <select name="role" className="neu-input mt-1">
+                    <option value="user">User</option>
+                    <option value="room_admin">Room admin</option>
+                  </select>
+                </label>
+              ) : (
+                <input type="hidden" name="role" value="user" />
+              )}
+              <button className="neu-btn neu-btn-primary">
+                Send invitations
+              </button>
+            </form>
+          </section>
         </>
       )}
     </main>

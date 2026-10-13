@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
+import { StatusBadge } from "@/components/badges";
 
 type Ev = {
   id: string;
@@ -10,6 +11,13 @@ type Ev = {
   action: string;
   status: string;
   occurred_at: string;
+};
+
+const AUDIT_LABELS: Record<string, { text: string; color: string }> = {
+  time_corrected: { text: "Time corrected", color: "badge-blue" },
+  missing_clock_out_added: { text: "Missing clock-out added", color: "badge-ok" },
+  review_approved: { text: "Review approved", color: "badge-ok" },
+  review_rejected: { text: "Review rejected", color: "badge-bad" },
 };
 
 function fmt(iso: string, tz: string) {
@@ -102,7 +110,9 @@ export default async function SessionDetailPage({
     byUser.set(e.user_id, row);
   }
 
-  const ended = Date.now() > new Date(session.expires_at).getTime();
+  const now = Date.now();
+  const ended = now > new Date(session.expires_at).getTime();
+  const upcoming = now < new Date(session.starts_at).getTime();
 
   async function toggle(formData: FormData) {
     "use server";
@@ -156,65 +166,68 @@ export default async function SessionDetailPage({
 
   const evCell = (ev?: Ev) =>
     ev ? (
-      <div>
-        <div>
-          {fmt(ev.occurred_at, tz)}
-          {ev.status === "corrected" && (
-            <span className="ml-1 rounded bg-amber-100 px-1 text-xs">
-              corrected
-            </span>
-          )}
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span>{fmt(ev.occurred_at, tz)}</span>
+          {ev.status !== "recorded" && <StatusBadge status={ev.status} />}
         </div>
-        <details className="text-sm">
-          <summary className="cursor-pointer underline">Correct</summary>
-          <form action={correct} className="mt-1 flex flex-col gap-1">
+        <details className="neu-details text-sm">
+          <summary>Correct</summary>
+          <form action={correct} className="mt-2 flex flex-col gap-2">
             <input type="hidden" name="event_id" value={ev.id} />
             <input
               type="datetime-local"
               name="new_time"
               required
               defaultValue={toLocalInput(ev.occurred_at, tz)}
-              className="rounded border p-1"
+              className="neu-input"
             />
             <input
               name="reason"
               required
               placeholder="Reason"
-              className="rounded border p-1"
+              aria-label="Reason for correction"
+              className="neu-input"
             />
-            <button className="rounded bg-black px-2 py-1 text-white">
+            <button className="neu-btn neu-btn-sm neu-btn-primary">
               Save correction
             </button>
           </form>
         </details>
       </div>
     ) : (
-      <span className="text-gray-400">—</span>
+      <span className="muted">—</span>
     );
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <Link href={base} className="text-sm underline">
+    <main className="page max-w-4xl">
+      <Link href={base} className="neu-back">
         ← All sessions
       </Link>
-      <h1 className="mt-2 text-2xl font-semibold">{session.title}</h1>
-      <p className="text-sm text-gray-600">
-        {fmt(session.starts_at, tz)} → {fmt(session.expires_at, tz)} ({tz}){" "}
-        {ended && <strong>· ended</strong>}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-semibold">{session.title}</h1>
+        {ended ? (
+          <span className="neu-badge">Ended</span>
+        ) : upcoming ? (
+          <span className="neu-badge badge-blue">Upcoming</span>
+        ) : (
+          <span className="neu-badge badge-ok">Open now</span>
+        )}
+      </div>
+      <p className="muted mt-1 text-sm">
+        {fmt(session.starts_at, tz)} → {fmt(session.expires_at, tz)} ({tz})
       </p>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="alert alert-error mt-4">{error}</p>}
 
-      <section className="mt-6 flex flex-wrap gap-6">
+      <section className="neu-card mt-6 flex flex-wrap gap-8">
         <div>
           <div
-            className="w-60 rounded border bg-white p-1"
+            className="neu-qr"
             dangerouslySetInnerHTML={{ __html: qrSvg }}
           />
-          <p className="mt-1 max-w-60 break-all text-xs text-gray-500">
-            {link}
-          </p>
+          <p className="muted mt-2 max-w-60 break-all text-xs">{link}</p>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           <form action={toggle}>
             <input type="hidden" name="field" value="allow_clock_in" />
             <input
@@ -222,7 +235,7 @@ export default async function SessionDetailPage({
               name="value"
               value={String(!session.allow_clock_in)}
             />
-            <button className="rounded border px-3 py-1 text-sm">
+            <button className="neu-btn neu-btn-sm">
               {session.allow_clock_in ? "Close clock-in" : "Open clock-in"}
             </button>
           </form>
@@ -233,13 +246,13 @@ export default async function SessionDetailPage({
               name="value"
               value={String(!session.allow_clock_out)}
             />
-            <button className="rounded border px-3 py-1 text-sm">
+            <button className="neu-btn neu-btn-sm">
               {session.allow_clock_out ? "Close clock-out" : "Open clock-out"}
             </button>
           </form>
           {!ended && (
             <form action={endNow}>
-              <button className="rounded bg-red-700 px-3 py-1 text-sm text-white">
+              <button className="neu-btn neu-btn-sm neu-btn-danger">
                 End session now
               </button>
             </form>
@@ -247,102 +260,120 @@ export default async function SessionDetailPage({
         </div>
       </section>
 
-      <h2 className="mt-8 text-lg font-medium">Attendance</h2>
-      <div className="mt-2 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="p-2">Person</th>
-              <th className="p-2">Clock in</th>
-              <th className="p-2">Clock out</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(members ?? []).map((m) => {
-              const row = byUser.get(m.user_id) ?? {};
-              return (
-                <tr key={m.user_id} className="border-b align-top">
-                  <td className="p-2">{m.email ?? "Unknown"}</td>
-                  <td className="p-2">{evCell(row.in)}</td>
-                  <td className="p-2">
-                    {row.out ? (
-                      evCell(row.out)
-                    ) : row.in ? (
-                      <div>
-                        {ended && (
-                          <div className="text-amber-700">
-                            Missing clock-out
-                          </div>
-                        )}
-                        <details className="text-sm">
-                          <summary className="cursor-pointer underline">
-                            Add clock-out
-                          </summary>
-                          <form
-                            action={addClockOut}
-                            className="mt-1 flex flex-col gap-1"
-                          >
-                            <input
-                              type="hidden"
-                              name="user_id"
-                              value={m.user_id}
-                            />
-                            <input
-                              type="datetime-local"
-                              name="new_time"
-                              required
-                              defaultValue={toLocalInput(
-                                session.expires_at,
-                                tz
-                              )}
-                              className="rounded border p-1"
-                            />
-                            <input
-                              name="reason"
-                              required
-                              placeholder="Reason"
-                              className="rounded border p-1"
-                            />
-                            <button className="rounded bg-black px-2 py-1 text-white">
-                              Save
-                            </button>
-                          </form>
-                        </details>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
+      <section className="neu-card mt-6">
+        <h2 className="text-lg font-medium">Attendance</h2>
+        <div className="mt-3 overflow-x-auto">
+          <table className="neu-table">
+            <thead>
+              <tr>
+                <th>Person</th>
+                <th>Clock in</th>
+                <th>Clock out</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(members ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={3} className="muted">
+                    No one is in this room yet.
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              )}
+              {(members ?? []).map((m) => {
+                const row = byUser.get(m.user_id) ?? {};
+                return (
+                  <tr key={m.user_id}>
+                    <td className="break-all">{m.email ?? "Unknown"}</td>
+                    <td>{evCell(row.in)}</td>
+                    <td>
+                      {row.out ? (
+                        evCell(row.out)
+                      ) : row.in ? (
+                        <div className="flex flex-col gap-1">
+                          {ended && (
+                            <span className="neu-badge badge-bad w-fit">
+                              Missing clock-out
+                            </span>
+                          )}
+                          <details className="neu-details text-sm">
+                            <summary>Add clock-out</summary>
+                            <form
+                              action={addClockOut}
+                              className="mt-2 flex flex-col gap-2"
+                            >
+                              <input
+                                type="hidden"
+                                name="user_id"
+                                value={m.user_id}
+                              />
+                              <input
+                                type="datetime-local"
+                                name="new_time"
+                                required
+                                defaultValue={toLocalInput(
+                                  session.expires_at,
+                                  tz
+                                )}
+                                className="neu-input"
+                              />
+                              <input
+                                name="reason"
+                                required
+                                placeholder="Reason"
+                                aria-label="Reason for adding clock-out"
+                                className="neu-input"
+                              />
+                              <button className="neu-btn neu-btn-sm neu-btn-primary">
+                                Save
+                              </button>
+                            </form>
+                          </details>
+                        </div>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-      <h2 className="mt-8 text-lg font-medium">Correction history</h2>
-      <ul className="mt-2 flex flex-col gap-2 text-sm">
-        {(audit ?? []).length === 0 && (
-          <li className="text-gray-600">No corrections.</li>
-        )}
-        {(audit ?? []).map((a) => (
-          <li key={a.id} className="rounded border p-3">
-            <div>
-              {a.change_type === "missing_clock_out_added"
-                ? "Missing clock-out added"
-                : "Time corrected"}{" "}
-              by {a.changed_by_email} · {fmt(a.changed_at, tz)}
-            </div>
-            <div className="text-gray-600">
-              {a.old_values?.occurred_at
-                ? fmt(a.old_values.occurred_at, tz)
-                : "none"}{" "}
-              → {fmt(a.new_values.occurred_at, tz)}
-            </div>
-            <div className="text-gray-600">Reason: {a.reason}</div>
-          </li>
-        ))}
-      </ul>
+      <section className="neu-card mt-6">
+        <h2 className="text-lg font-medium">Correction history</h2>
+        <ul className="mt-3 flex flex-col gap-4 text-sm">
+          {(audit ?? []).length === 0 && (
+            <li className="neu-inset muted">No corrections.</li>
+          )}
+          {(audit ?? []).map((a) => {
+            const label = AUDIT_LABELS[a.change_type as string] ?? {
+              text: "Change",
+              color: "",
+            };
+            return (
+              <li key={a.id} className="neu-inset flex flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`neu-badge ${label.color}`}>
+                    {label.text}
+                  </span>
+                  <span className="muted">
+                    by {a.changed_by_email} · {fmt(a.changed_at, tz)}
+                  </span>
+                </div>
+                <div>
+                  {a.old_values?.occurred_at
+                    ? fmt(a.old_values.occurred_at, tz)
+                    : "none"}{" "}
+                  → {fmt(a.new_values.occurred_at, tz)}
+                </div>
+                <div className="muted">Reason: {a.reason}</div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
     </main>
   );
 }

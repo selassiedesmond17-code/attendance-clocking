@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { StatusBadge, ActionBadge } from "@/components/badges";
 import {
   parseFilters,
   UUID_RE,
@@ -52,41 +53,44 @@ export default async function ReportsPage({
   }
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <Link href={`/org/${orgId}`} className="text-sm underline">
+    <main className="page max-w-5xl">
+      <Link href={`/org/${orgId}`} className="neu-back">
         ← Back to {org.name}
       </Link>
-      <h1 className="mt-2 text-2xl font-semibold">Attendance report</h1>
-      <p className="text-sm text-gray-600">
+      <h1 className="mt-3 text-2xl font-semibold">Attendance report</h1>
+      <p className="muted text-sm">
         Times are shown in {org.timezone}. You see the records your role
         allows.
       </p>
 
-      <form method="get" className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <label className="text-sm">
+      <form
+        method="get"
+        className="neu-card mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3"
+      >
+        <label className="field">
           From
           <input
             type="date"
             name="from"
             defaultValue={get("from") ?? ""}
-            className="mt-1 block w-full rounded border p-2"
+            className="neu-input mt-1"
           />
         </label>
-        <label className="text-sm">
+        <label className="field">
           To
           <input
             type="date"
             name="to"
             defaultValue={get("to") ?? ""}
-            className="mt-1 block w-full rounded border p-2"
+            className="neu-input mt-1"
           />
         </label>
-        <label className="text-sm">
+        <label className="field">
           Room
           <select
             name="room"
             defaultValue={get("room") ?? ""}
-            className="mt-1 block w-full rounded border p-2"
+            className="neu-input mt-1"
           >
             <option value="">All rooms</option>
             {(rooms ?? []).map((r) => (
@@ -96,20 +100,20 @@ export default async function ReportsPage({
             ))}
           </select>
         </label>
-        <label className="text-sm">
+        <label className="field">
           Person (email contains)
           <input
             name="email"
             defaultValue={get("email") ?? ""}
-            className="mt-1 block w-full rounded border p-2"
+            className="neu-input mt-1"
           />
         </label>
-        <label className="text-sm">
+        <label className="field">
           Status
           <select
             name="status"
             defaultValue={get("status") ?? ""}
-            className="mt-1 block w-full rounded border p-2"
+            className="neu-input mt-1"
           >
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
@@ -119,68 +123,63 @@ export default async function ReportsPage({
             ))}
           </select>
         </label>
-        <div className="flex items-end gap-2">
-          <button className="rounded bg-black px-4 py-2 text-white">
-            Apply
-          </button>
-          <Link href={`/org/${orgId}/reports`} className="px-2 py-2 text-sm underline">
+        <div className="flex items-end gap-3">
+          <button className="neu-btn neu-btn-primary">Apply</button>
+          <Link href={`/org/${orgId}/reports`} className="neu-btn">
             Clear
           </Link>
         </div>
       </form>
 
-      {error && <p className="mt-3 text-sm text-red-600">{error.message}</p>}
+      {error && <p className="alert alert-error mt-4">{error.message}</p>}
 
-      <div className="mt-4 flex items-center justify-between">
-        <p className="text-sm text-gray-600">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="muted text-sm">
           {rows.length} record{rows.length === 1 ? "" : "s"}
-          {rows.length === 1000 && " (showing the latest 1000, narrow the filters)"}
+          {rows.length === 1000 &&
+            " (showing the latest 1000, narrow the filters)"}
         </p>
         <a
           href={`/org/${orgId}/reports/export?${qs.toString()}`}
-          className="rounded border px-3 py-1 text-sm"
+          className="neu-btn neu-btn-success"
         >
           Download CSV
         </a>
       </div>
 
-      <div className="mt-2 overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="neu-card mt-3 overflow-x-auto">
+        <table className="neu-table">
           <thead>
-            <tr className="border-b">
-              <th className="p-2">Date</th>
-              <th className="p-2">Time</th>
-              <th className="p-2">Room</th>
-              <th className="p-2">Session</th>
-              <th className="p-2">Person</th>
-              <th className="p-2">Action</th>
-              <th className="p-2">Status</th>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Room</th>
+              <th>Session</th>
+              <th>Person</th>
+              <th>Action</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-3 text-gray-600">
+                <td colSpan={7} className="muted">
                   No records match.
                 </td>
               </tr>
             )}
             {rows.map((r) => (
-              <tr key={r.event_id} className="border-b">
-                <td className="p-2">{r.local_date}</td>
-                <td className="p-2">{r.local_time}</td>
-                <td className="p-2">{r.room_name}</td>
-                <td className="p-2">{r.session_title}</td>
-                <td className="p-2">{r.user_email ?? "Unknown"}</td>
-                <td className="p-2">
-                  {r.action === "clock_in" ? "Clock in" : "Clock out"}
+              <tr key={r.event_id}>
+                <td className="whitespace-nowrap">{r.local_date}</td>
+                <td className="whitespace-nowrap">{r.local_time}</td>
+                <td>{r.room_name}</td>
+                <td>{r.session_title}</td>
+                <td className="break-all">{r.user_email ?? "Unknown"}</td>
+                <td>
+                  <ActionBadge action={r.action} />
                 </td>
-                <td className="p-2">
-                  {r.status === "corrected" ? (
-                    <span className="rounded bg-amber-100 px-1">corrected</span>
-                  ) : (
-                    r.status.replace("_", " ")
-                  )}
+                <td>
+                  <StatusBadge status={r.status} />
                 </td>
               </tr>
             ))}

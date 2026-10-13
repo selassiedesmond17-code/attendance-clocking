@@ -38,41 +38,42 @@ export default async function OrgPage({
   }
 
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <Link href="/" className="text-sm underline">
+    <main className="page max-w-2xl">
+      <Link href="/" className="neu-back">
         ← Back
       </Link>
       <h1 className="mt-2 text-2xl font-semibold">{org.name}</h1>
-      <p className="text-sm text-gray-600">
-        Status: {org.status} · Time zone: {org.timezone}
+      <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+        <span
+          className={`neu-badge ${
+            org.status === "active" ? "badge-ok" : "badge-warn"
+          }`}
+        >
+          {org.status}
+        </span>
+        <span className="muted">Time zone: {org.timezone}</span>
       </p>
-        
-     <Link
-        href={`/org/${orgId}/reports`}
-        className="mt-3 inline-block rounded border px-3 py-1 text-sm"
-      >
-        Attendance reports
-      </Link>
-
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Link href={`/org/${orgId}/reports`} className="neu-btn">
+          Attendance reports
+        </Link>
+      </div>
 
       {org.status !== "active" ? (
-        <p className="mt-6 rounded border border-amber-300 bg-amber-50 p-3">
+        <p className="alert alert-warn mt-6">
           This organization is not active. It is either waiting for approval or
           has been suspended.
         </p>
       ) : (
-        <>
-          <h2 className="mt-6 text-lg font-medium">Rooms</h2>
-          <ul className="mt-2 flex flex-col gap-2">
+        <section className="neu-card mt-6">
+          <h2 className="text-lg font-medium">Rooms</h2>
+          <ul className="mt-4 flex flex-col gap-4">
             {(rooms ?? []).length === 0 && (
-              <li className="text-gray-600">No rooms yet.</li>
+              <li className="neu-inset muted">No rooms yet.</li>
             )}
             {(rooms ?? []).map((r) => (
               <li key={r.id}>
-                <Link
-                  href={`/org/${orgId}/rooms/${r.id}`}
-                  className="block rounded border p-3 hover:bg-gray-50"
-                >
+                <Link href={`/org/${orgId}/rooms/${r.id}`} className="neu-row">
                   {r.name}
                 </Link>
               </li>
@@ -80,17 +81,18 @@ export default async function OrgPage({
           </ul>
 
           {isOrgAdmin && (
-            <form action={addRoom} className="mt-4 flex gap-2">
+            <form action={addRoom} className="mt-6 flex gap-3">
               <input
                 name="name"
                 required
                 placeholder="New room name"
-                className="flex-1 rounded border p-2"
+                aria-label="New room name"
+                className="neu-input"
               />
-              <button className="rounded bg-black px-4 text-white">Add</button>
+              <button className="neu-btn neu-btn-primary">Add</button>
             </form>
           )}
-        </>
+        </section>
       )}
     </main>
   );

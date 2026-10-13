@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { StatusBadge } from "@/components/badges";
 
 function fmt(iso: string, tz: string) {
   return new Date(iso).toLocaleString("en-GB", {
@@ -34,16 +35,18 @@ export default async function ClockPage({
 
   if (!session) {
     return (
-      <main className="mx-auto max-w-sm p-6">
-        <h1 className="text-xl font-semibold">Session not available</h1>
-        <p className="mt-2 text-gray-600">
-          We could not open this session. Make sure you are signed in with the
-          email address that was added to this room.
-        </p>
-        <p className="mt-1 text-sm text-gray-500">Signed in as {user?.email}</p>
-        <Link href="/" className="mt-4 inline-block underline">
-          Go to home
-        </Link>
+      <main className="page max-w-md">
+        <div className="neu-card flex flex-col gap-4">
+          <h1 className="text-xl font-semibold">Session not available</h1>
+          <p className="alert alert-warn">
+            We could not open this session. Make sure you are signed in with
+            the email address that was added to this room.
+          </p>
+          <p className="muted text-sm">Signed in as {user?.email}</p>
+          <Link href="/" className="neu-btn">
+            Go to home
+          </Link>
+        </div>
       </main>
     );
   }
@@ -96,59 +99,67 @@ export default async function ClockPage({
   }
 
   return (
-    <main className="mx-auto max-w-sm p-6">
-      <p className="text-sm text-gray-500">
-        {org?.name} · {room?.name}
-      </p>
-      <h1 className="text-2xl font-semibold">{session.title}</h1>
-      <p className="text-sm text-gray-600">
-        {fmt(session.starts_at, tz)} → {fmt(session.expires_at, tz)}
-      </p>
-      <p className="mt-1 text-sm text-gray-500">Signed in as {user?.email}</p>
-
-      {sp.done && (
-        <p className="mt-4 rounded border border-green-300 bg-green-50 p-3">
-          {sp.done} ✓
-        </p>
-      )}
-      {sp.error && (
-        <p className="mt-4 rounded border border-red-300 bg-red-50 p-3">
-          {sp.error}
-        </p>
-      )}
-
-      <div className="mt-4 text-sm">
+    <main className="page max-w-md">
+      <div className="neu-card flex flex-col gap-4">
         <div>
-          Clock in: {myIn ? fmt(myIn.occurred_at, tz) : "not yet"}
+          <p className="muted text-sm">
+            {org?.name} · {room?.name}
+          </p>
+          <h1 className="text-2xl font-semibold">{session.title}</h1>
+          <p className="muted mt-1 text-sm">
+            {fmt(session.starts_at, tz)} → {fmt(session.expires_at, tz)}
+          </p>
+          <p className="muted mt-1 text-xs">Signed in as {user?.email}</p>
         </div>
-        <div>
-          Clock out: {myOut ? fmt(myOut.occurred_at, tz) : "not yet"}
+
+        {sp.done && <p className="alert alert-ok">{sp.done} ✓</p>}
+        {sp.error && <p className="alert alert-error">{sp.error}</p>}
+
+        <div className="neu-inset flex flex-col gap-2 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="muted">Clock in</span>
+            <span className="flex items-center gap-2">
+              {myIn ? fmt(myIn.occurred_at, tz) : "not yet"}
+              {myIn && myIn.status !== "recorded" && (
+                <StatusBadge status={myIn.status} />
+              )}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="muted">Clock out</span>
+            <span className="flex items-center gap-2">
+              {myOut ? fmt(myOut.occurred_at, tz) : "not yet"}
+              {myOut && myOut.status !== "recorded" && (
+                <StatusBadge status={myOut.status} />
+              )}
+            </span>
+          </div>
         </div>
+
+        <form action={clock} className="flex flex-col gap-4">
+          <button
+            name="action"
+            value="clock_in"
+            disabled={!canIn}
+            className="neu-btn neu-btn-lg neu-btn-success"
+          >
+            Clock in
+          </button>
+          <button
+            name="action"
+            value="clock_out"
+            disabled={!canOut}
+            className="neu-btn neu-btn-lg neu-btn-primary"
+          >
+            Clock out
+          </button>
+        </form>
+        {!open && (
+          <p className="alert alert-info">
+            This session is not open right now.
+          </p>
+        )}
       </div>
-
-      <form action={clock} className="mt-6 flex flex-col gap-3">
-        <button
-          name="action"
-          value="clock_in"
-          disabled={!canIn}
-          className="rounded bg-green-700 p-3 text-white disabled:opacity-40"
-        >
-          Clock in
-        </button>
-        <button
-          name="action"
-          value="clock_out"
-          disabled={!canOut}
-          className="rounded bg-black p-3 text-white disabled:opacity-40"
-        >
-          Clock out
-        </button>
-      </form>
-      {!open && (
-        <p className="mt-3 text-sm text-gray-600">
-          This session is not open right now.
-        </p>
-      )}
     </main>
   );
 }

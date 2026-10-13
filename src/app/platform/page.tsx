@@ -26,50 +26,60 @@ export default async function PlatformPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <Link href="/" className="text-sm underline">
+    <main className="page max-w-3xl">
+      <Link href="/" className="neu-back">
         ← Back
       </Link>
       <h1 className="mt-2 text-2xl font-semibold">Platform admin</h1>
-      <p className="text-sm text-gray-600">
-        Organizations registered on the platform.
-      </p>
+      <p className="muted text-sm">Organizations registered on the platform.</p>
 
-      <ul className="mt-6 flex flex-col gap-2">
+      <ul className="mt-6 flex flex-col gap-4">
         {(orgs ?? []).length === 0 && (
-          <li className="text-gray-600">No organizations yet.</li>
+          <li className="neu-inset muted">No organizations yet.</li>
         )}
         {(orgs ?? []).map((o) => (
-          <li key={o.id} className="rounded border p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-medium">{o.name}</div>
-                <div className="text-sm text-gray-500">
-                  {o.status} · {o.timezone}
-                </div>
+          <li
+            key={o.id}
+            className="neu-raised flex flex-wrap items-center justify-between gap-3"
+          >
+            <div>
+              <div className="font-medium">{o.name}</div>
+              <div className="mt-1 flex items-center gap-2 text-sm">
+                <span
+                  className={`neu-badge ${
+                    o.status === "active"
+                      ? "badge-ok"
+                      : o.status === "suspended"
+                      ? "badge-bad"
+                      : "badge-warn"
+                  }`}
+                >
+                  {o.status}
+                </span>
+                <span className="muted">{o.timezone}</span>
               </div>
-              <form action={setStatus} className="flex gap-2">
-                <input type="hidden" name="id" value={o.id} />
-                {o.status !== "active" && (
-                  <button
-                    name="status"
-                    value="active"
-                    className="rounded bg-green-700 px-3 py-1 text-sm text-white"
-                  >
-                    Approve
-                  </button>
-                )}
-                {o.status !== "suspended" && (
-                  <button
-                    name="status"
-                    value="suspended"
-                    className="rounded bg-red-700 px-3 py-1 text-sm text-white"
-                  >
-                    Suspend
-                  </button>
-                )}
-              </form>
             </div>
+            <form action={setStatus} className="flex gap-3">
+              <input type="hidden" name="id" value={o.id} />
+              {o.status !== "active" && (
+                <button
+                  name="status"
+                  value="active"
+                  className="neu-btn neu-btn-sm neu-btn-success"
+                >
+                  Approve
+                </button>
+              )}
+              {o.status !== "suspended" && (
+                <button
+                  name="status"
+                  value="suspended"
+                  className="neu-btn neu-btn-sm neu-btn-danger"
+                >
+                  Suspend
+                </button>
+              )}
+            </form>
           </li>
         ))}
       </ul>
