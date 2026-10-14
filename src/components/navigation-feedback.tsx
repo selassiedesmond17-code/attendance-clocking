@@ -2,13 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { DotsLoader } from "@/components/loaders";
+
+// The loader stays visible at least this long, so it never just flickers.
+// Lower the number for a snappier feel, raise it for a longer animation.
+const MIN_VISIBLE_MS = 450;
+// Safety net: never leave the loader up forever
+const GIVE_UP_MS = 10000;
 
 export default function NavigationFeedback() {
   const pathname = usePathname();
   const [nav, setNav] = useState<{ id: number; from: string } | null>(null);
-  const [slowId, setSlowId] = useState<number | null>(null);
 
   useEffect(() => {
+    function start() {
+      const id = Date.now();
+      setNav({ id, from: window.location.pathname });
+      window.setTimeout(
+        () => setNav((n) => (n && n.id === id ? null : n)),
+        GIVE_UP_MS
+      );
+    }
+
     function onClick(e: MouseEvent) {
       if (e.defaultPrevented || e.button !== 0) return;
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -21,36 +36,36 @@ export default function NavigationFeedback() {
       if (url.origin !== window.location.origin) return;
       if (url.pathname === window.location.pathname) return;
       if (url.pathname.endsWith("/export")) return; // CSV download
-
-      const id = Date.now();
-      setNav({ id, from: window.location.pathname });
-      window.setTimeout(() => setSlowId(id), 350);
-      // Safety net: never leave the overlay up forever
-      window.setTimeout(
-        () => setNav((n) => (n && n.id === id ? null : n)),
-        10000
-      );
+      start();
     }
+
     document.addEventListener("click", onClick);
-    return () => document.removeEventListener("click", onClick);
+    window.addEventListener("app-navigate", start);
+    return () => {
+      document.removeEventListener("click", onClick);
+      window.removeEventListener("app-navigate", start);
+    };
   }, []);
 
-  // Still on the page we left from means the next page has not arrived yet
-  const pending = nav !== null && nav.from === pathname;
-  const slow = nav !== null && pending && slowId === nav.id;
+  // When the new page has arrived, keep the loader up until the minimum time is over
+  useEffect(() => {
+    if (!nav || nav.from === pathname) return;
+    const remaining = Math.max(0, MIN_VISIBLE_MS - (Date.now() - nav.id));
+    const t = window.setTimeout(
+      () => setNav((n) => (n && n.id === nav.id ? null : n)),
+      remaining
+    );
+    return () => window.clearTimeout(t);
+  }, [pathname, nav]);
 
-  if (!pending) return null;
+  if (!nav) return null;
   return (
     <>
       <div className="nav-bar" aria-hidden="true" />
-      {slow && (
-        <div className="nav-overlay" role="status" aria-live="polite">
-          <div className="nav-spinner">
-            <span className="spinner" aria-hidden="true" />
-          </div>
-          <span className="sr-only">Loading…</span>
-        </div>
-      )}
+      <div className="nav-overlay" role="status" aria-live="polite">
+        <DotsLoader />
+        <span className="sr-only">Loading…</span>
+      </div>
     </>
   );
 }

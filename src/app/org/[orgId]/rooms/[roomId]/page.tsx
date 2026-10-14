@@ -96,9 +96,7 @@ export default async function RoomPage({
 
   return (
     <main className="page max-w-2xl">
-      <Link href={`/org/${orgId}`} className="neu-back">
-        ← Back to rooms
-      </Link>
+
       <h1 className="mt-2 text-2xl font-semibold">{room.name}</h1>
       {canManage && (
         <div className="mt-4 flex flex-wrap gap-3">

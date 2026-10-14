@@ -54,9 +54,7 @@ export default async function ReportsPage({
 
   return (
     <main className="page max-w-5xl">
-      <Link href={`/org/${orgId}`} className="neu-back">
-        ← Back to {org.name}
-      </Link>
+
       <h1 className="mt-3 text-2xl font-semibold">Attendance report</h1>
       <p className="muted text-sm">
         Times are shown in {org.timezone}. You see the records your role

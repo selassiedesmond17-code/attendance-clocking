@@ -75,9 +75,7 @@ export default async function SessionsPage({
 
   return (
     <main className="page max-w-2xl">
-      <Link href={`/org/${orgId}/rooms/${roomId}`} className="neu-back">
-        ← Back to {room.name}
-      </Link>
+
       <h1 className="mt-3 text-2xl font-semibold">Attendance sessions</h1>
 
       <section className="neu-card mt-6">

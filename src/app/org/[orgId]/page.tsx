@@ -40,9 +40,7 @@ export default async function OrgPage({
 
   return (
     <main className="page max-w-2xl">
-      <Link href="/" className="neu-back">
-        ← Back
-      </Link>
+
       <h1 className="mt-2 text-2xl font-semibold">{org.name}</h1>
       <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
         <span

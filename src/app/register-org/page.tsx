@@ -27,9 +27,7 @@ export default async function RegisterOrgPage({
 
   return (
     <main className="page max-w-md">
-      <Link href="/" className="neu-back">
-        ← Back
-      </Link>
+
       <div className="neu-card mt-3 flex flex-col gap-4">
         <h1 className="text-2xl font-semibold">Register an organization</h1>
         <form action={register} className="flex flex-col gap-4">

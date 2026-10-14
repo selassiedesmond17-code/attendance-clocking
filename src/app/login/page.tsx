@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { SquareLoader } from "@/components/loaders";
 
 export default function LoginPage() {
   const supabase = createClient();
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
 
   async function sendCode(e: React.FormEvent) {
     e.preventDefault();
@@ -43,21 +45,29 @@ export default function LoginPage() {
       token: code.trim(),
       type: "email",
     });
-    setBusy(false);
     if (error) {
+      setBusy(false);
       setMessage(error.message);
       setIsError(true);
-    } else {
-      const next = new URLSearchParams(window.location.search).get("next");
-      router.push(
-        next && next.startsWith("/") && !next.startsWith("//") ? next : "/"
-      );
-      router.refresh();
+      return;
     }
+    setSigningIn(true);
+    const next = new URLSearchParams(window.location.search).get("next");
+    router.push(
+      next && next.startsWith("/") && !next.startsWith("//") ? next : "/"
+    );
+    router.refresh();
   }
 
   return (
     <main className="page flex min-h-screen max-w-md flex-col justify-center">
+      {signingIn && (
+        <div className="splash" role="status">
+          <SquareLoader />
+          <p className="muted mt-6 text-sm">Signing you in…</p>
+        </div>
+      )}
+
       <div className="neu-card flex flex-col gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Sign in</h1>

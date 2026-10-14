@@ -201,9 +201,7 @@ export default async function SessionDetailPage({
 
   return (
     <main className="page max-w-4xl">
-      <Link href={base} className="neu-back">
-        ← All sessions
-      </Link>
+
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold">{session.title}</h1>
         {ended ? (

@@ -27,9 +27,7 @@ export default async function PlatformPage() {
 
   return (
     <main className="page max-w-3xl">
-      <Link href="/" className="neu-back">
-        ← Back
-      </Link>
+
       <h1 className="mt-2 text-2xl font-semibold">Platform admin</h1>
       <p className="muted text-sm">Organizations registered on the platform.</p>
 

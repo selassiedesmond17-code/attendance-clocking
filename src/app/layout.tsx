@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import ThemeToggle from "@/components/theme-toggle";
 import "./globals.css";
 import NavigationFeedback from "@/components/navigation-feedback";
+import AppNav from "@/components/app-nav";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <ThemeToggle />
         <NavigationFeedback />
+        <AppNav />
         {children}
       </body>
     </html>
