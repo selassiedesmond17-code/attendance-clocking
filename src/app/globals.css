@@ -316,6 +316,22 @@
     color: var(--blue);
     box-shadow: inset 3px 3px 6px var(--sh-dark), inset -3px -3px 6px var(--sh-light);
   }
+  .nav-item,
+  .nav-tab {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .nav-item:active {
+    transform: scale(0.985);
+    box-shadow: inset 3px 3px 6px var(--sh-dark), inset -3px -3px 6px var(--sh-light);
+  }
+  .nav-tab { transition: transform 0.12s ease, box-shadow 0.12s ease; }
+  .nav-tab:active {
+    transform: scale(0.94);
+    box-shadow: inset 3px 3px 6px var(--sh-dark), inset -3px -3px 6px var(--sh-light);
+  }
+  .nav-item.is-pending::after { display: none; }
+  .nav-item-spinner { margin-left: auto; color: var(--blue); }  
   .nav-sheet-backdrop {
     position: fixed;
     inset: 0;
@@ -350,6 +366,7 @@
       box-shadow: 8px 8px 16px var(--sh-dark), -8px -8px 16px var(--sh-light);
     }
     .nav-sheet, .nav-sheet-backdrop { display: none; }
+    .nav-overlay { padding-left: 17rem; }
   }
   @media (max-width: 899px) {
     body:has(.app-nav) { padding-bottom: 6.5rem; }
@@ -395,7 +412,7 @@
   .nav-overlay {
     position: fixed;
     inset: 0;
-    z-index: 90;
+    z-index: 55;
     display: flex;
     align-items: center;
     justify-content: center;

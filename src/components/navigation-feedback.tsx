@@ -39,10 +39,10 @@ export default function NavigationFeedback() {
       start();
     }
 
-    document.addEventListener("click", onClick);
+    document.addEventListener("click", onClick, true);
     window.addEventListener("app-navigate", start);
     return () => {
-      document.removeEventListener("click", onClick);
+      document.removeEventListener("click", onClick, true);
       window.removeEventListener("app-navigate", start);
     };
   }, []);

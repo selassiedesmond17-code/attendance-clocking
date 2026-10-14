@@ -35,6 +35,8 @@ export default function AppNav() {
   const [data, setData] = useState<NavData | null>(null);
   const [stored, setStored] = useState<string | null>(null);
   const [sheet, setSheet] = useState(false);
+  // The item you just pressed, shown as active before the new page arrives
+  const [pend, setPend] = useState<{ href: string; from: string } | null>(null);
   const lastLoad = useRef(0);
   const forced = useRef<string | null>(null);
 
@@ -136,7 +138,8 @@ export default function AppNav() {
   ];
   if (current) {
     const base = `/org/${current.id}`;
-    const inSessions = pathname.startsWith(base) && pathname.includes("/sessions");
+    const inSessions =
+      pathname.startsWith(base) && pathname.includes("/sessions");
     items.push({
       href: base,
       label: "Rooms",
@@ -180,11 +183,35 @@ export default function AppNav() {
       active: pathname === "/platform",
     });
   }
+  const extra: Item = {
+    href: "/register-org",
+    label: "New organization",
+    icon: "plus",
+    active: pathname === "/register-org",
+  };
 
   const primary = items.filter((i) => PRIMARY.includes(i.label));
   const secondary = items.filter((i) => !PRIMARY.includes(i.label));
   const email = data?.email ?? "";
   const initials = (email.slice(0, 2) || "?").toUpperCase();
+
+  // While a page is loading, the pressed item counts as the active one
+  const pendingHref = pend && pend.from === pathname ? pend.href : null;
+  const isActive = (i: Item) =>
+    pendingHref ? i.href === pendingHref : i.active;
+
+  function press(href: string) {
+    return (e: React.MouseEvent) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
+        return;
+      if (href === pathname) return;
+      setPend({ href, from: pathname });
+      window.setTimeout(
+        () => setPend((p) => (p && p.href === href ? null : p)),
+        8000
+      );
+    };
+  }
 
   function switchOrg(id: string) {
     try {
@@ -192,11 +219,43 @@ export default function AppNav() {
     } catch {
       // storage unavailable
     }
-    const m = pathname.match(/^\/org\/[^/]+\/(sessions|people|reports|settings)$/);
-    window.dispatchEvent(new Event("app-navigate"));    
+    const m = pathname.match(
+      /^\/org\/[^/]+\/(sessions|people|reports|settings)$/
+    );
+    window.dispatchEvent(new Event("app-navigate"));
     router.push(m ? `/org/${id}/${m[1]}` : `/org/${id}`);
     setSheet(false);
   }
+
+  const renderItem = (i: Item) => {
+    const loading = pendingHref === i.href;
+    return (
+      <Link
+        key={i.href}
+        href={i.href}
+        className={`nav-item${loading ? " is-pending" : ""}`}
+        aria-current={isActive(i) ? "page" : undefined}
+        onClick={press(i.href)}
+      >
+        <Icon name={i.icon} size={20} />
+        <span>{i.label}</span>
+        {loading && <span className="spinner nav-item-spinner" aria-hidden="true" />}
+      </Link>
+    );
+  };
+
+  const renderTab = (i: Item) => (
+    <Link
+      key={i.href}
+      href={i.href}
+      className="nav-tab"
+      aria-current={isActive(i) ? "page" : undefined}
+      onClick={press(i.href)}
+    >
+      <Icon name={i.icon} size={22} />
+      <span>{i.label}</span>
+    </Link>
+  );
 
   const orgSwitch =
     orgs.length > 1 ? (
@@ -240,28 +299,11 @@ export default function AppNav() {
               <div className="skeleton h-11 w-full" />
             </>
           ) : (
-            items.map((i) => (
-              <Link
-                key={i.href}
-                href={i.href}
-                className="nav-item"
-                aria-current={i.active ? "page" : undefined}
-              >
-                <Icon name={i.icon} size={20} />
-                <span>{i.label}</span>
-              </Link>
-            ))
+            items.map(renderItem)
           )}
         </div>
         <div className="nav-spacer" />
-        <Link
-          href="/register-org"
-          className="nav-item"
-          aria-current={pathname === "/register-org" ? "page" : undefined}
-        >
-          <Icon name="plus" size={20} />
-          <span>New organization</span>
-        </Link>
+        {renderItem(extra)}
         <form action="/auth/signout" method="post">
           <button className="nav-item">
             <Icon name="logout" size={20} />
@@ -272,17 +314,7 @@ export default function AppNav() {
 
       {/* ---------- Phone: bottom bar ---------- */}
       <div className="nav-mobile">
-        {primary.map((i) => (
-          <Link
-            key={i.href}
-            href={i.href}
-            className="nav-tab"
-            aria-current={i.active ? "page" : undefined}
-          >
-            <Icon name={i.icon} size={22} />
-            <span>{i.label}</span>
-          </Link>
-        ))}
+        {primary.map(renderTab)}
         <button
           type="button"
           className="nav-tab"
@@ -317,21 +349,8 @@ export default function AppNav() {
               </span>
             </div>
             {orgSwitch}
-            {secondary.map((i) => (
-              <Link
-                key={i.href}
-                href={i.href}
-                className="nav-item"
-                aria-current={i.active ? "page" : undefined}
-              >
-                <Icon name={i.icon} size={20} />
-                <span>{i.label}</span>
-              </Link>
-            ))}
-            <Link href="/register-org" className="nav-item">
-              <Icon name="plus" size={20} />
-              <span>New organization</span>
-            </Link>
+            {secondary.map(renderItem)}
+            {renderItem(extra)}
             <form action="/auth/signout" method="post">
               <button className="nav-item">
                 <Icon name="logout" size={20} />
