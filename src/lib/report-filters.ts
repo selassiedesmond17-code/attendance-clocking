@@ -15,6 +15,8 @@ export type ReportRow = {
   user_email: string | null;
   action: string;
   status: string;
+  gps_result: string;
+  admin_approved: boolean;
 };
 
 // Turns the page's filter boxes into safe values for the database function

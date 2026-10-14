@@ -30,7 +30,7 @@ export async function GET(
   });
   if (error) return new NextResponse(error.message, { status: 400 });
 
-  const header = ["Date", "Time", "Room", "Session", "Person", "Action", "Status"];
+  const header = ["Date", "Time", "Room", "Session", "Person", "Action", "Status", "Location check", "Admin approved"];
   const lines = [header.map(csvCell).join(",")];
   for (const r of (data ?? []) as ReportRow[]) {
     lines.push(
@@ -42,6 +42,8 @@ export async function GET(
         r.user_email,
         r.action === "clock_in" ? "Clock in" : "Clock out",
         r.status,
+        r.gps_result,
+        r.admin_approved ? "yes" : "",
       ]
         .map(csvCell)
         .join(",")

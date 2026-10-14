@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/badges";
+import SubmitButton from "@/components/submit-button";
+import ClockButtons from "./clock-buttons";
 
 function fmt(iso: string, tz: string) {
   return new Date(iso).toLocaleString("en-GB", {
@@ -16,7 +18,7 @@ export default async function ClockPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ error?: string; done?: string }>;
+  searchParams: Promise<{ error?: string; done?: string; pending?: string }>;
 }) {
   const { token } = await params;
   const sp = await searchParams;
@@ -28,7 +30,7 @@ export default async function ClockPage({
   const { data: session } = await supabase
     .from("attendance_sessions")
     .select(
-      "id, title, starts_at, expires_at, allow_clock_in, allow_clock_out, room_id, organization_id"
+      "id, title, starts_at, expires_at, allow_clock_in, allow_clock_out, room_id, organization_id, require_gps, gps_notice"
     )
     .eq("token", token)
     .maybeSingle();
@@ -44,34 +46,34 @@ export default async function ClockPage({
           </p>
           <p className="muted text-sm">Signed in as {user?.email}</p>
           <Link href="/" className="neu-btn">
-            Go to home
+            Go to dashboard
           </Link>
         </div>
       </main>
     );
   }
 
-  const { data: room } = await supabase
-    .from("rooms")
-    .select("name")
-    .eq("id", session.room_id)
-    .single();
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("name, timezone")
-    .eq("id", session.organization_id)
-    .single();
+  const [roomRes, orgRes, mineRes] = await Promise.all([
+    supabase.from("rooms").select("name").eq("id", session.room_id).single(),
+    supabase
+      .from("organizations")
+      .select("name, timezone")
+      .eq("id", session.organization_id)
+      .single(),
+    supabase
+      .from("attendance_events")
+      .select("id, action, status, occurred_at, review_note, admin_approved")
+      .eq("session_id", session.id)
+      .eq("user_id", user!.id),
+  ]);
+  const room = roomRes.data;
+  const org = orgRes.data;
   const tz = org?.timezone ?? "UTC";
 
-  const { data: mine } = await supabase
-    .from("attendance_events")
-    .select("action, status, occurred_at")
-    .eq("session_id", session.id)
-    .eq("user_id", user!.id);
-
-  const active = (mine ?? []).filter((e) => e.status !== "rejected");
+  const active = (mineRes.data ?? []).filter((e) => e.status !== "rejected");
   const myIn = active.find((e) => e.action === "clock_in");
   const myOut = active.find((e) => e.action === "clock_out");
+  const waiting = active.filter((e) => e.status === "pending_review");
 
   const now = Date.now();
   const open =
@@ -84,16 +86,43 @@ export default async function ClockPage({
     "use server";
     const action =
       formData.get("action") === "clock_out" ? "clock_out" : "clock_in";
+    const num = (key: string) => {
+      const v = String(formData.get(key) ?? "").trim();
+      if (!v) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("clock_action", {
       p_token: token,
       p_action: action,
+      p_lat: num("lat"),
+      p_lng: num("lng"),
+      p_accuracy: num("acc"),
+    });
+    if (error) redirect(`/s/${token}?error=${encodeURIComponent(error.message)}`);
+    const r = data as { result: string; message: string };
+    const key =
+      r.result === "recorded"
+        ? "done"
+        : r.result === "pending_review"
+        ? "pending"
+        : "error";
+    redirect(`/s/${token}?${key}=${encodeURIComponent(r.message)}`);
+  }
+
+  async function requestReview(formData: FormData) {
+    "use server";
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("request_review", {
+      p_event: String(formData.get("event_id")),
+      p_note: String(formData.get("note") ?? ""),
     });
     redirect(
       `/s/${token}?${
         error
           ? `error=${encodeURIComponent(error.message)}`
-          : `done=${encodeURIComponent(String(data))}`
+          : `done=${encodeURIComponent("Review requested")}`
       }`
     );
   }
@@ -112,48 +141,91 @@ export default async function ClockPage({
           <p className="muted mt-1 text-xs">Signed in as {user?.email}</p>
         </div>
 
+        {session.gps_notice && (
+          <p className="alert alert-warn">
+            <strong>Notice:</strong> {session.gps_notice}
+          </p>
+        )}
+        {session.require_gps && (
+          <p className="alert alert-info">
+            This session checks your location. Allow location access when your
+            browser asks.
+          </p>
+        )}
+
         {sp.done && <p className="alert alert-ok">{sp.done} ✓</p>}
+        {sp.pending && <p className="alert alert-warn">{sp.pending}</p>}
         {sp.error && <p className="alert alert-error">{sp.error}</p>}
 
         <div className="neu-inset flex flex-col gap-2 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <span className="muted">Clock in</span>
-            <span className="flex items-center gap-2">
-              {myIn ? fmt(myIn.occurred_at, tz) : "not yet"}
-              {myIn && myIn.status !== "recorded" && (
-                <StatusBadge status={myIn.status} />
-              )}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="muted">Clock out</span>
-            <span className="flex items-center gap-2">
-              {myOut ? fmt(myOut.occurred_at, tz) : "not yet"}
-              {myOut && myOut.status !== "recorded" && (
-                <StatusBadge status={myOut.status} />
-              )}
-            </span>
-          </div>
+          {(
+            [
+              ["Clock in", myIn],
+              ["Clock out", myOut],
+            ] as const
+          ).map(([label, ev]) => (
+            <div key={label} className="flex items-center justify-between gap-2">
+              <span className="muted">{label}</span>
+              <span className="flex flex-wrap items-center justify-end gap-2">
+                {ev ? fmt(ev.occurred_at, tz) : "not yet"}
+                {ev && ev.status !== "recorded" && (
+                  <StatusBadge status={ev.status} />
+                )}
+                {ev?.admin_approved && (
+                  <span className="neu-badge badge-blue">admin-approved</span>
+                )}
+              </span>
+            </div>
+          ))}
         </div>
 
-        <form action={clock} className="flex flex-col gap-4">
-          <button
-            name="action"
-            value="clock_in"
-            disabled={!canIn}
-            className="neu-btn neu-btn-lg neu-btn-success"
-          >
-            Clock in
-          </button>
-          <button
-            name="action"
-            value="clock_out"
-            disabled={!canOut}
-            className="neu-btn neu-btn-lg neu-btn-primary"
-          >
-            Clock out
-          </button>
-        </form>
+        {waiting.map((e) => (
+          <div key={e.id} className="neu-inset flex flex-col gap-3">
+            <div className="text-sm font-medium">
+              {e.action === "clock_in" ? "Clock in" : "Clock out"} waiting for
+              review
+            </div>
+            <p className="muted text-sm">
+              We could not confirm your location. Your attempt time (
+              {fmt(e.occurred_at, tz)}) is saved.
+            </p>
+            {e.review_note ? (
+              <>
+                <p className="alert alert-info">
+                  Review requested. An admin will decide soon.
+                </p>
+                <p className="muted text-sm">Your explanation: {e.review_note}</p>
+              </>
+            ) : (
+              <form action={requestReview} className="flex flex-col gap-3">
+                <input type="hidden" name="event_id" value={e.id} />
+                <textarea
+                  name="note"
+                  required
+                  minLength={3}
+                  maxLength={500}
+                  rows={3}
+                  placeholder="What happened? For example: I am inside the building and my GPS is weak."
+                  aria-label="Explanation for the review"
+                  className="neu-input"
+                />
+                <SubmitButton
+                  className="neu-btn neu-btn-primary"
+                  pendingText="Sending…"
+                >
+                  Request review
+                </SubmitButton>
+              </form>
+            )}
+          </div>
+        ))}
+
+        <ClockButtons
+          clock={clock}
+          requireGps={session.require_gps}
+          canIn={canIn}
+          canOut={canOut}
+        />
         {!open && (
           <p className="alert alert-info">
             This session is not open right now.

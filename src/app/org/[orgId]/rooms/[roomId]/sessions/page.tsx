@@ -68,6 +68,8 @@ export default async function SessionsPage({
       p_end_local: String(formData.get("end") ?? ""),
       p_allow_in: formData.get("allow_in") === "on",
       p_allow_out: formData.get("allow_out") === "on",
+      p_require_gps: formData.get("require_gps") === "on",
+      p_notice: String(formData.get("notice") ?? ""),
     });
     if (error) redirect(`${base}?error=${encodeURIComponent(error.message)}`);
     redirect(`${base}/${data}`);
@@ -117,6 +119,20 @@ export default async function SessionsPage({
             <input type="checkbox" name="allow_out" defaultChecked /> Clock-out
             allowed
           </label>
+             <label className="field flex items-center gap-2">
+               <input type="checkbox" name="require_gps" /> Check location (GPS)
+               when clocking
+             </label>
+             <label className="field">
+               Notice for users (optional)
+               <textarea
+                 name="notice"
+                 rows={2}
+                 maxLength={300}
+                 placeholder="For example: GPS is weak inside the hall today"
+                 className="neu-input mt-1"
+               />
+             </label>
           <SubmitButton className="neu-btn neu-btn-primary" pendingText="Creating…">Create session</SubmitButton>
         </form>
         {error && <p className="alert alert-error mt-4">{error}</p>}

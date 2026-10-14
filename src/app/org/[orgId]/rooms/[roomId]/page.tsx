@@ -100,6 +100,11 @@ export default async function RoomPage({
       <h1 className="mt-2 text-2xl font-semibold">{room.name}</h1>
       {canManage && (
         <div className="mt-4 flex flex-wrap gap-3">
+                {isOrgAdmin && (
+            <Link href={`${path}/location`} className="neu-btn">
+              Location
+            </Link>
+          )}
           <Link href={`${path}/sessions`} className="neu-btn">
             Attendance sessions
           </Link>

@@ -177,7 +177,12 @@ export default async function ReportsPage({
                   <ActionBadge action={r.action} />
                 </td>
                 <td>
-                  <StatusBadge status={r.status} />
+  <StatusBadge status={r.status} />
+                    {r.admin_approved && (
+                      <span className="neu-badge badge-blue ml-1">
+                        admin-approved
+                      </span>
+                    )}
                 </td>
               </tr>
             ))}

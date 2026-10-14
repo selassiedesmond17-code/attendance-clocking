@@ -166,6 +166,14 @@ export default function AppNav() {
       icon: "chart",
       active: within(`${base}/reports`),
     });
+    if (current.canManageRooms) {
+      items.push({
+        href: `${base}/reviews`,
+        label: "Reviews",
+        icon: "check",
+        active: within(`${base}/reviews`),
+      });
+    }
     if (current.isOrgAdmin) {
       items.push({
         href: `${base}/settings`,

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/badges";
+import SubmitButton from "@/components/submit-button";
 
 type Ev = {
   id: string;
@@ -11,6 +12,7 @@ type Ev = {
   action: string;
   status: string;
   occurred_at: string;
+  admin_approved?: boolean;
 };
 
 const AUDIT_LABELS: Record<string, { text: string; color: string }> = {
@@ -56,7 +58,7 @@ export default async function SessionDetailPage({
   const { data: session } = await supabase
     .from("attendance_sessions")
     .select(
-      "id, title, token, starts_at, expires_at, allow_clock_in, allow_clock_out"
+      "id, title, token, starts_at, expires_at, allow_clock_in, allow_clock_out, require_gps, gps_notice"
     )
     .eq("id", sessionId)
     .eq("room_id", roomId)
@@ -79,7 +81,7 @@ export default async function SessionDetailPage({
 
   const { data: events } = await supabase
     .from("attendance_events")
-    .select("id, user_id, action, status, occurred_at")
+    .select("id, user_id, action, status, occurred_at, admin_approved")
     .eq("session_id", sessionId);
 
   const { data: audit } = await supabase
@@ -164,12 +166,27 @@ export default async function SessionDetailPage({
     redirect(path);
   }
 
-  const evCell = (ev?: Ev) =>
+     async function saveNotice(formData: FormData) {
+       "use server";
+       const notice = String(formData.get("notice") ?? "").trim().slice(0, 300);
+       const supabase = await createClient();
+       const { error } = await supabase
+         .from("attendance_sessions")
+         .update({ gps_notice: notice || null })
+         .eq("id", sessionId);
+       if (error) redirect(`${path}?error=${encodeURIComponent(error.message)}`);
+       redirect(path);
+     }
+
+     const evCell = (ev?: Ev) =>
     ev ? (
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span>{fmt(ev.occurred_at, tz)}</span>
-          {ev.status !== "recorded" && <StatusBadge status={ev.status} />}
+   {ev.status !== "recorded" && <StatusBadge status={ev.status} />}
+             {ev.admin_approved && (
+               <span className="neu-badge badge-blue">admin-approved</span>
+             )}          
         </div>
         <details className="neu-details text-sm">
           <summary>Correct</summary>
@@ -215,7 +232,36 @@ export default async function SessionDetailPage({
       <p className="muted mt-1 text-sm">
         {fmt(session.starts_at, tz)} → {fmt(session.expires_at, tz)} ({tz})
       </p>
-      {error && <p className="alert alert-error mt-4">{error}</p>}
+   {error && <p className="alert alert-error mt-4">{error}</p>}
+
+         <div className="mt-4 flex flex-wrap items-center gap-3">
+           <span className={`neu-badge ${session.require_gps ? "badge-ok" : ""}`}>
+             Location check: {session.require_gps ? "on" : "off"}
+           </span>
+         </div>
+         <form action={saveNotice} className="neu-card mt-4 flex flex-col gap-3">
+           <label className="field">
+             Notice for users (shown on the clock page, for example a known
+             GPS problem today)
+             <textarea
+               name="notice"
+               rows={2}
+               maxLength={300}
+               defaultValue={session.gps_notice ?? ""}
+               className="neu-input mt-1"
+             />
+           </label>
+           <p className="muted text-xs">
+             A notice only warns people. It never approves anyone&apos;s
+             attempt automatically.
+           </p>
+           <SubmitButton
+             className="neu-btn neu-btn-sm neu-btn-primary w-fit"
+             pendingText="Saving…"
+           >
+             Save notice
+           </SubmitButton>
+         </form>
 
       <section className="neu-card mt-6 flex flex-wrap gap-8">
         <div>
