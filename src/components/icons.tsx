@@ -62,6 +62,12 @@ const ICONS: Record<string, ReactNode> = {
       <path d="M8.5 12l2.5 2.5L16 9.5" />
     </>
   ),
+    user: (
+    <>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c.8-4 3.6-6 7-6s6.2 2 7 6" />
+    </>
+  ),
   plus: <path d="M12 5v14M5 12h14" />,
   logout: (
     <>

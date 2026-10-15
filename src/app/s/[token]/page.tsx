@@ -66,7 +66,11 @@ export default async function ClockPage({
       .eq("session_id", session.id)
       .eq("user_id", user!.id),
   ]);
-  const room = roomRes.data;
+       const room = roomRes.data;
+     const { data: missing } = await supabase.rpc("my_missing_profile", {
+       p_org: session.organization_id,
+     });
+     const profileIncomplete = Array.isArray(missing) && missing.length > 0;
   const org = orgRes.data;
   const tz = org?.timezone ?? "UTC";
 
@@ -79,8 +83,9 @@ export default async function ClockPage({
   const open =
     now >= new Date(session.starts_at).getTime() &&
     now <= new Date(session.expires_at).getTime();
-  const canIn = open && session.allow_clock_in && !myIn;
-  const canOut = open && session.allow_clock_out && !!myIn && !myOut;
+     const canIn = open && session.allow_clock_in && !myIn && !profileIncomplete;
+     const canOut =
+       open && session.allow_clock_out && !!myIn && !myOut && !profileIncomplete;
 
   async function clock(formData: FormData) {
     "use server";
@@ -220,7 +225,18 @@ export default async function ClockPage({
           </div>
         ))}
 
-        <ClockButtons
+           {profileIncomplete && (
+             <p className="alert alert-warn">
+               Please complete your profile before clocking in or out.{" "}
+               <Link
+                 href={`/org/${session.organization_id}/profile`}
+                 className="neu-link"
+               >
+                 Open my profile
+               </Link>
+             </p>
+           )}
+           <ClockButtons
           clock={clock}
           requireGps={session.require_gps}
           canIn={canIn}

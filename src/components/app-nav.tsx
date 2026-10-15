@@ -5,18 +5,20 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Icon from "@/components/icons";
+import Brand from "@/components/brand";
 
 type OrgItem = {
   id: string;
   name: string;
   status: string;
   isOrgAdmin: boolean;
-  canManageRooms: boolean;
+  isManager: boolean;
 };
 
 type NavData = {
   email: string | null;
-  isPlatformAdmin: boolean;
+  name: string | null;
+  isSuperadmin: boolean;
   orgs: OrgItem[];
 };
 
@@ -27,7 +29,13 @@ type MembershipRow = {
 
 type Item = { href: string; label: string; icon: string; active: boolean };
 
-const PRIMARY = ["Dashboard", "Rooms", "Sessions", "Reports"];
+const PRIMARY = ["Dashboard", "Departments", "Sessions", "Reports"];
+
+function initialsOf(label: string) {
+  const parts = label.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (label.slice(0, 2) || "?").toUpperCase();
+}
 
 export default function AppNav() {
   const pathname = usePathname();
@@ -35,7 +43,6 @@ export default function AppNav() {
   const [data, setData] = useState<NavData | null>(null);
   const [stored, setStored] = useState<string | null>(null);
   const [sheet, setSheet] = useState(false);
-  // The item you just pressed, shown as active before the new page arrives
   const [pend, setPend] = useState<{ href: string; from: string } | null>(null);
   const lastLoad = useRef(0);
   const forced = useRef<string | null>(null);
@@ -53,20 +60,26 @@ export default function AppNav() {
       return;
     }
     const uid = session.user.id;
-    const [mem, ra, pa] = await Promise.all([
+    const [mem, dm, pa, prof] = await Promise.all([
       supabase
         .from("memberships")
         .select("role, organizations(id, name, status)")
         .eq("user_id", uid),
       supabase
-        .from("room_members")
-        .select("organization_id")
+        .from("department_members")
+        .select("organization_id, role")
         .eq("user_id", uid)
-        .eq("role", "room_admin"),
+        .in("role", ["admin", "assistant"]),
       supabase.rpc("is_platform_admin"),
+      supabase
+        .from("org_profiles")
+        .select("full_name")
+        .eq("user_id", uid)
+        .not("full_name", "is", null)
+        .limit(1),
     ]);
-    const roomAdminOrgs = new Set(
-      ((ra.data ?? []) as { organization_id: string }[]).map(
+    const managerOrgs = new Set(
+      ((dm.data ?? []) as { organization_id: string }[]).map(
         (r) => r.organization_id
       )
     );
@@ -79,13 +92,14 @@ export default function AppNav() {
                 name: m.organizations.name,
                 status: m.organizations.status,
                 isOrgAdmin: m.role === "org_admin",
-                canManageRooms:
-                  m.role === "org_admin" ||
-                  roomAdminOrgs.has(m.organizations.id),
+                isManager: managerOrgs.has(m.organizations.id),
               },
             ]
           : []
     );
+    const name =
+      ((prof.data ?? []) as { full_name: string | null }[])[0]?.full_name ??
+      null;
     try {
       setStored(localStorage.getItem("currentOrg"));
     } catch {
@@ -93,7 +107,8 @@ export default function AppNav() {
     }
     setData({
       email: session.user.email ?? null,
-      isPlatformAdmin: Boolean(pa.data),
+      name,
+      isSuperadmin: Boolean(pa.data),
       orgs,
     });
   }, []);
@@ -113,7 +128,6 @@ export default function AppNav() {
     void load();
   }, [pathname, hidden, urlOrg, data, load]);
 
-  // Remember which organization you were last in
   useEffect(() => {
     if (!urlOrg) return;
     try {
@@ -138,35 +152,35 @@ export default function AppNav() {
   ];
   if (current) {
     const base = `/org/${current.id}`;
+    const manager = current.isOrgAdmin || current.isManager;
     const inSessions =
-      pathname.startsWith(base) && pathname.includes("/sessions");
-    items.push({
-      href: base,
-      label: "Rooms",
-      icon: "door",
-      active: (pathname === base || within(`${base}/rooms`)) && !inSessions,
-    });
-    if (current.canManageRooms) {
+      pathname === `${base}/sessions` ||
+      (pathname.startsWith(base) && pathname.includes("/sessions/"));
+    if (manager) {
       items.push({
-        href: `${base}/sessions`,
-        label: "Sessions",
-        icon: "clock",
-        active: inSessions,
-      });
-      items.push({
-        href: `${base}/people`,
-        label: "People",
-        icon: "people",
-        active: within(`${base}/people`),
+        href: base,
+        label: "Departments",
+        icon: "building",
+        active:
+          (pathname === base ||
+            within(`${base}/departments`) ||
+            within(`${base}/rooms`)) &&
+          !inSessions,
       });
     }
+    items.push({
+      href: `${base}/sessions`,
+      label: "Sessions",
+      icon: "clock",
+      active: inSessions,
+    });
     items.push({
       href: `${base}/reports`,
       label: "Reports",
       icon: "chart",
       active: within(`${base}/reports`),
     });
-    if (current.canManageRooms) {
+    if (manager) {
       items.push({
         href: `${base}/reviews`,
         label: "Reviews",
@@ -174,6 +188,12 @@ export default function AppNav() {
         active: within(`${base}/reviews`),
       });
     }
+    items.push({
+      href: `${base}/profile`,
+      label: "Profile",
+      icon: "user",
+      active: within(`${base}/profile`),
+    });
     if (current.isOrgAdmin) {
       items.push({
         href: `${base}/settings`,
@@ -183,27 +203,21 @@ export default function AppNav() {
       });
     }
   }
-  if (data?.isPlatformAdmin) {
+  if (data?.isSuperadmin) {
     items.push({
-      href: "/platform",
-      label: "Platform admin",
+      href: "/superadmin",
+      label: "Superadmin",
       icon: "shield",
-      active: pathname === "/platform",
+      active: pathname.startsWith("/superadmin"),
     });
   }
-  const extra: Item = {
-    href: "/register-org",
-    label: "New organization",
-    icon: "plus",
-    active: pathname === "/register-org",
-  };
 
   const primary = items.filter((i) => PRIMARY.includes(i.label));
   const secondary = items.filter((i) => !PRIMARY.includes(i.label));
   const email = data?.email ?? "";
-  const initials = (email.slice(0, 2) || "?").toUpperCase();
+  const display = data?.name ?? (email || "Signed in");
+  const initials = initialsOf(data?.name ?? email);
 
-  // While a page is loading, the pressed item counts as the active one
   const pendingHref = pend && pend.from === pathname ? pend.href : null;
   const isActive = (i: Item) =>
     pendingHref ? i.href === pendingHref : i.active;
@@ -227,9 +241,7 @@ export default function AppNav() {
     } catch {
       // storage unavailable
     }
-    const m = pathname.match(
-      /^\/org\/[^/]+\/(sessions|people|reports|settings)$/
-    );
+    const m = pathname.match(/^\/org\/[^/]+\/(sessions|reports|settings|reviews|profile)$/);
     window.dispatchEvent(new Event("app-navigate"));
     router.push(m ? `/org/${id}/${m[1]}` : `/org/${id}`);
     setSheet(false);
@@ -265,6 +277,15 @@ export default function AppNav() {
     </Link>
   );
 
+  const account = (
+    <div className="nav-account neu-inset">
+      <span className="nav-avatar">{initials}</span>
+      <span className="nav-email font-semibold" title={email}>
+        {display}
+      </span>
+    </div>
+  );
+
   const orgSwitch =
     orgs.length > 1 ? (
       <label className="block">
@@ -292,12 +313,8 @@ export default function AppNav() {
     <nav className="app-nav" aria-label="Main navigation">
       {/* ---------- Laptop and desktop: left sidebar ---------- */}
       <div className="nav-desktop">
-        <div className="nav-account neu-inset">
-          <span className="nav-avatar">{initials}</span>
-          <span className="nav-email" title={email}>
-            {email || "Signed in"}
-          </span>
-        </div>
+        <Brand />
+        {account}
         {orgSwitch}
         <div className="nav-list">
           {data === null ? (
@@ -311,7 +328,6 @@ export default function AppNav() {
           )}
         </div>
         <div className="nav-spacer" />
-        {renderItem(extra)}
         <form action="/auth/signout" method="post">
           <button className="nav-item">
             <Icon name="logout" size={20} />
@@ -350,15 +366,9 @@ export default function AppNav() {
               if ((e.target as Element).closest("a")) setSheet(false);
             }}
           >
-            <div className="nav-account neu-inset">
-              <span className="nav-avatar">{initials}</span>
-              <span className="nav-email" title={email}>
-                {email || "Signed in"}
-              </span>
-            </div>
+            {account}
             {orgSwitch}
             {secondary.map(renderItem)}
-            {renderItem(extra)}
             <form action="/auth/signout" method="post">
               <button className="nav-item">
                 <Icon name="logout" size={20} />

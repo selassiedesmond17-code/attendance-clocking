@@ -1,16 +1,50 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import PlatformNotice from "@/components/platform-notice";
+import ProfileNotice from "@/components/profile-notice";
+import { deptRoleText } from "@/lib/dept";
 
 type Membership = {
   role: string;
-  organizations: { id: string; name: string; status: string } | null;
+  organizations: {
+    id: string;
+    name: string;
+    status: string;
+    org_type: string;
+    timezone: string;
+  } | null;
+};
+type DM = {
+  organization_id: string;
+  department_id: string;
+  role: string;
+  title: string | null;
 };
 type OrgRow = { organization_id: string };
+type Sess = {
+  id: string;
+  title: string;
+  token: string;
+  room_id: string;
+  organization_id: string;
+  starts_at: string;
+  expires_at: string;
+};
 
 const NIL = "00000000-0000-0000-0000-000000000000";
 
 function count(rows: OrgRow[], orgId: string) {
   return rows.filter((r) => r.organization_id === orgId).length;
+}
+
+function fmt(iso: string, tz: string) {
+  return new Date(iso).toLocaleString("en-GB", {
+    timeZone: tz,
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
 function Stat({
@@ -39,25 +73,35 @@ export default async function Dashboard() {
   // Accept any invitations waiting for this email address
   await supabase.rpc("claim_invites");
 
-  const [memRes, raRes, paRes] = await Promise.all([
+  const [memRes, dmRes, paRes, nameRes] = await Promise.all([
     supabase
       .from("memberships")
-      .select("role, organizations(id, name, status)")
+      .select("role, organizations(id, name, status, org_type, timezone)")
       .eq("user_id", user!.id),
     supabase
-      .from("room_members")
-      .select("organization_id")
-      .eq("user_id", user!.id)
-      .eq("role", "room_admin"),
+      .from("department_members")
+      .select("organization_id, department_id, role, title")
+      .eq("user_id", user!.id),
     supabase.rpc("is_platform_admin"),
+    supabase
+      .from("org_profiles")
+      .select("full_name")
+      .eq("user_id", user!.id)
+      .not("full_name", "is", null)
+      .limit(1),
   ]);
 
   const memberships = (
     (memRes.data ?? []) as unknown as Membership[]
   ).filter((m) => m.organizations);
-  const roomAdminOrgs = new Set(
-    ((raRes.data ?? []) as unknown as OrgRow[]).map((r) => r.organization_id)
-  );
+
+  // The superadmin has no organization of their own: go straight to the approval page
+  if (paRes.data && memberships.length === 0) redirect("/superadmin");
+
+  const dms = (dmRes.data ?? []) as unknown as DM[];
+  const name =
+    ((nameRes.data ?? []) as { full_name: string | null }[])[0]?.full_name ??
+    null;
   const ids = memberships.length
     ? memberships.map((m) => m.organizations!.id)
     : [NIL];
@@ -65,69 +109,102 @@ export default async function Dashboard() {
   const nowIso = new Date().toISOString();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [roomsRes, openRes, recentRes, pendingRes] = await Promise.all([
-    supabase.from("rooms").select("organization_id").in("organization_id", ids),
-    supabase
-      .from("attendance_sessions")
-      .select("organization_id")
-      .in("organization_id", ids)
-      .lte("starts_at", nowIso)
-      .gte("expires_at", nowIso),
-    supabase
-      .from("attendance_events")
-      .select("organization_id")
-      .in("organization_id", ids)
-      .gte("occurred_at", since),
-    supabase
-      .from("attendance_events")
-      .select("organization_id")
-      .in("organization_id", ids)
-      .eq("status", "pending_review"),
-  ]);
+  const [roomsRes, sessRes, deptsRes, recentRes, pendingRes] =
+    await Promise.all([
+      supabase
+        .from("rooms")
+        .select("id, organization_id, department_id")
+        .in("organization_id", ids),
+      supabase
+        .from("attendance_sessions")
+        .select("id, title, token, room_id, organization_id, starts_at, expires_at")
+        .in("organization_id", ids)
+        .gte("expires_at", nowIso)
+        .order("starts_at")
+        .limit(200),
+      supabase.from("departments").select("organization_id").in("organization_id", ids),
+      supabase
+        .from("attendance_events")
+        .select("organization_id")
+        .in("organization_id", ids)
+        .gte("occurred_at", since),
+      supabase
+        .from("attendance_events")
+        .select("organization_id")
+        .in("organization_id", ids)
+        .eq("status", "pending_review"),
+    ]);
 
-  const rooms = (roomsRes.data ?? []) as unknown as OrgRow[];
-  const openNow = (openRes.data ?? []) as unknown as OrgRow[];
+  const roomDept = new Map(
+    (
+      (roomsRes.data ?? []) as {
+        id: string;
+        organization_id: string;
+        department_id: string;
+      }[]
+    ).map((r) => [r.id, r.department_id])
+  );
+  const sessions = (sessRes.data ?? []) as unknown as Sess[];
+  const depts = (deptsRes.data ?? []) as unknown as OrgRow[];
   const recent = (recentRes.data ?? []) as unknown as OrgRow[];
   const pendingRows = (pendingRes.data ?? []) as unknown as OrgRow[];
+  const now = Date.now();
+  const t = (iso: string) => new Date(iso).getTime();
 
   return (
     <main className="page max-w-4xl">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
-      <p className="muted mt-1 text-sm">Signed in as {user?.email}</p>
+      <h1 className="text-2xl font-semibold">
+        Welcome, {name ?? user?.email}
+      </h1>
+      <Suspense fallback={null}>
+        <PlatformNotice />
+        <ProfileNotice />
+      </Suspense>
 
       {memberships.length === 0 && (
         <section className="neu-card mt-6 flex flex-col gap-3">
-          <h2 className="text-lg font-medium">Get started</h2>
+          <h2 className="text-lg font-medium">You are not in an organization yet</h2>
           <p className="muted text-sm">
-            You are not part of any organization yet. Register one, or ask an
-            administrator to invite your email address to a room.
+            Ask your administrator to add your email address. To register your
+            own organization, sign out and use the Register tab on the sign-in
+            page.
           </p>
-          <div>
-            <Link href="/register-org" className="neu-btn neu-btn-primary">
-              Register an organization
-            </Link>
-          </div>
         </section>
       )}
 
       <div className="mt-6 flex flex-col gap-6">
         {memberships.map((m) => {
-          const o = m.organizations;
-          if (!o) return null;
+          const o = m.organizations!;
           const isAdmin = m.role === "org_admin";
-          const isRoomAdmin = roomAdminOrgs.has(o.id);
-          const canManage = isAdmin || isRoomAdmin;
-          const open = count(openNow, o.id);
+          const mine = dms.filter((d) => d.organization_id === o.id);
+          const manager = isAdmin || mine.some((d) => d.role !== "user");
+          const myDepts = new Set(mine.map((d) => d.department_id));
+          const labels = [
+            ...new Set([
+              ...(isAdmin ? ["Platform admin"] : []),
+              ...mine.map((d) => deptRoleText(o.org_type, d.role, d.title)),
+            ]),
+          ];
+          const orgSessions = sessions.filter((s) => s.organization_id === o.id);
+          const joinable = orgSessions.filter((s) =>
+            myDepts.has(roomDept.get(s.room_id) ?? "")
+          );
+          const isLive = (s: Sess) => t(s.starts_at) <= now && t(s.expires_at) >= now;
+          const live = joinable.filter(isLive);
+          const coming = joinable.filter((s) => t(s.starts_at) > now).slice(0, 3);
+          const liveCount = orgSessions.filter(isLive).length;
           const pending = count(pendingRows, o.id);
 
           return (
-            <section key={o.id} className="neu-card">
+            <section key={o.id} className="neu-card flex flex-col gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">{o.name}</h2>
-                <span className="flex gap-2">
-                  <span className="neu-badge badge-blue">
-                    {isAdmin ? "admin" : isRoomAdmin ? "room admin" : "member"}
-                  </span>
+                <span className="flex flex-wrap gap-2">
+                  {labels.map((l) => (
+                    <span key={l} className="neu-badge badge-blue">
+                      {l}
+                    </span>
+                  ))}
                   <span
                     className={`neu-badge ${
                       o.status === "active"
@@ -143,69 +220,103 @@ export default async function Dashboard() {
               </div>
 
               {o.status !== "active" ? (
-                <p className="alert alert-warn mt-4">
+                <p className="alert alert-warn">
                   This organization is not active. It is either waiting for
                   approval or has been suspended.
                 </p>
               ) : (
                 <>
-                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <Stat label="Rooms" value={count(rooms, o.id)} />
-                    <Stat
-                      label="Sessions open now"
-                      value={open}
-                      tone={open > 0 ? "text-ok" : ""}
-                    />
-                    <Stat label="Records, last 24h" value={count(recent, o.id)} />
-                    {canManage && (
+                  {manager && (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <Stat label="Departments" value={count(depts, o.id)} />
+                      <Stat
+                        label="Sessions live now"
+                        value={liveCount}
+                        tone={liveCount > 0 ? "text-ok" : ""}
+                      />
+                      <Stat label="Records, last 24h" value={count(recent, o.id)} />
                       <Stat
                         label="Pending review"
                         value={pending}
                         tone={pending > 0 ? "text-warn" : ""}
                       />
-                    )}
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-3">
+                    </div>
+                  )}
+
+                  {myDepts.size > 0 && (
+                    <div className="flex flex-col gap-3">
+                      <h3 className="text-sm font-semibold">Live now</h3>
+                      {live.length === 0 && (
+                        <p className="neu-inset muted text-sm">
+                          Nothing is live right now.
+                        </p>
+                      )}
+                      {live.map((s) => (
+                        <div
+                          key={s.id}
+                          className="neu-raised flex flex-wrap items-center justify-between gap-3"
+                        >
+                          <span>
+                            <span className="block font-medium">{s.title}</span>
+                            <span className="muted text-sm">
+                              until {fmt(s.expires_at, o.timezone)}
+                            </span>
+                          </span>
+                          <Link
+                            href={`/s/${s.token}`}
+                            className="neu-btn neu-btn-success"
+                          >
+                            Join
+                          </Link>
+                        </div>
+                      ))}
+                      {coming.length > 0 && (
+                        <>
+                          <h3 className="mt-2 text-sm font-semibold">Coming up</h3>
+                          {coming.map((s) => (
+                            <div key={s.id} className="neu-inset text-sm">
+                              <span className="font-medium">{s.title}</span>
+                              <span className="muted">
+                                {" "}
+                                · {fmt(s.starts_at, o.timezone)}
+                              </span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-3">
                     <Link
-                      href={`/org/${o.id}`}
+                      href={`/org/${o.id}/sessions`}
                       className="neu-btn neu-btn-primary"
                     >
-                      Open
+                      Sessions
                     </Link>
-                    {canManage && (
-                      <Link href={`/org/${o.id}/sessions`} className="neu-btn">
-                        Sessions
-                      </Link>
-                    )}
                     <Link href={`/org/${o.id}/reports`} className="neu-btn">
                       Reports
                     </Link>
+                    {manager && (
+                      <Link href={`/org/${o.id}`} className="neu-btn">
+                        Departments
+                      </Link>
+                    )}
                   </div>
                 </>
-              )}
-
-              {!canManage && (
-                <p className="muted mt-4 text-sm">
-                  To clock in or out, scan the QR code shown in your room.
-                </p>
               )}
             </section>
           );
         })}
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-3">
-        {memberships.length > 0 && (
-          <Link href="/register-org" className="neu-btn">
-            Register another organization
+      {paRes.data && (
+        <div className="mt-8">
+          <Link href="/superadmin" className="neu-btn">
+            Superadmin
           </Link>
-        )}
-        {paRes.data && (
-          <Link href="/platform" className="neu-btn">
-            Platform admin
-          </Link>
-        )}
-      </div>
+        </div>
+      )}
     </main>
   );
 }
