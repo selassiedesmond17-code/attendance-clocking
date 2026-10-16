@@ -209,7 +209,16 @@ export default async function DepartmentPage({
               >
                 <span className="min-w-0">
                   <span className="block break-words font-medium">
-                    {nm ?? m.email ?? "Unknown"}
+                       {canRemove(power, m.role) ? (
+                       <Link
+                         href={`/org/${orgId}/people/${m.user_id}`}
+                         className="hover:underline"
+                       >
+                         {nm ?? m.email ?? "Unknown"}
+                       </Link>
+                     ) : (
+                       (nm ?? m.email ?? "Unknown")
+                     )}
                   </span>
                   {nm && (
                     <span className="muted block break-all text-xs">{m.email}</span>
@@ -244,7 +253,14 @@ export default async function DepartmentPage({
   return (
     <main className="page max-w-2xl">
       <p className="muted text-sm">{org.name}</p>
-      <h1 className="text-2xl font-semibold">{dept.name}</h1>
+         <div className="flex flex-wrap items-center justify-between gap-3">
+         <h1 className="text-2xl font-semibold">{dept.name}</h1>
+         {power === "platform" && (
+           <Link href={`${path}/edit`} className="neu-btn neu-btn-sm">
+             Edit department
+           </Link>
+         )}
+       </div>
 
       {sp.done !== undefined && (
         <p className="alert alert-ok mt-4">

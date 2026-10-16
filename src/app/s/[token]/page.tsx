@@ -74,7 +74,9 @@ export default async function ClockPage({
   const org = orgRes.data;
   const tz = org?.timezone ?? "UTC";
 
-  const active = (mineRes.data ?? []).filter((e) => e.status !== "rejected");
+  const active = (mineRes.data ?? []).filter(
+    (e) => e.status !== "rejected" && e.status !== "voided"
+  );
   const myIn = active.find((e) => e.action === "clock_in");
   const myOut = active.find((e) => e.action === "clock_out");
   const waiting = active.filter((e) => e.status === "pending_review");

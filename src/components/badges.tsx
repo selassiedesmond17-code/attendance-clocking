@@ -6,6 +6,7 @@ export function StatusBadge({ status }: { status: string }) {
         corrected: "badge-blue",
         pending_review: "badge-warn",
         rejected: "badge-bad",
+        voided: "badge-bad",
       } as Record<string, string>
     )[status] ?? "";
   return (

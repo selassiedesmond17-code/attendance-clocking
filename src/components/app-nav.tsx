@@ -205,7 +205,7 @@ export default function AppNav() {
   }
   if (data?.isSuperadmin) {
     items.push({
-      href: "/superadmin",
+      href: process.env.NEXT_PUBLIC_ADMIN_URL ?? "/",
       label: "Superadmin",
       icon: "shield",
       active: pathname.startsWith("/superadmin"),

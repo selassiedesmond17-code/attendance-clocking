@@ -18,7 +18,9 @@ const MESSAGES: Record<Exclude<EmailStatus, "ok">, string> = {
     "Your organization registration is still waiting for approval. We will email you as soon as it is approved.",
   rejected:
     "Your registration was not approved. Please check your email for the reason.",
-  error: "Something went wrong. Please try again.",
+    error: "Something went wrong. Please try again.",
+  superadmin:
+    "This email is not registered in any organization. Ask your administrator to add you, or register your organization.",
 };
 
 export default function LoginClient({ initialTab }: { initialTab: Tab }) {

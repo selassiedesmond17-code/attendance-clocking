@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import PlatformNotice from "@/components/platform-notice";
 import ProfileNotice from "@/components/profile-notice";
 import { deptRoleText } from "@/lib/dept";
 
@@ -96,7 +95,31 @@ export default async function Dashboard() {
   ).filter((m) => m.organizations);
 
   // The superadmin has no organization of their own: go straight to the approval page
-  if (paRes.data && memberships.length === 0) redirect("/superadmin");
+     // The superadmin account lives on the separate KlokIt admin site
+   if (paRes.data && memberships.length === 0) {
+     return (
+       <main className="page max-w-md">
+         <div className="neu-card flex flex-col gap-4">
+           <h1 className="text-xl font-semibold">Superadmin account</h1>
+           <p className="muted text-sm">
+             This account manages KlokIt from its own admin site and cannot be
+             used here.
+           </p>
+           {process.env.NEXT_PUBLIC_ADMIN_URL && (
+             <a
+               href={process.env.NEXT_PUBLIC_ADMIN_URL}
+               className="neu-btn neu-btn-primary"
+             >
+               Open the admin site
+             </a>
+           )}
+           <form action="/auth/signout" method="post">
+             <button className="neu-btn w-full">Sign out</button>
+           </form>
+         </div>
+       </main>
+     );
+   }
 
   const dms = (dmRes.data ?? []) as unknown as DM[];
   const name =
@@ -157,7 +180,6 @@ export default async function Dashboard() {
         Welcome, {name ?? user?.email}
       </h1>
       <Suspense fallback={null}>
-        <PlatformNotice />
         <ProfileNotice />
       </Suspense>
 
@@ -310,7 +332,7 @@ export default async function Dashboard() {
         })}
       </div>
 
-      {paRes.data && (
+      {false && (
         <div className="mt-8">
           <Link href="/superadmin" className="neu-btn">
             Superadmin

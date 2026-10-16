@@ -19,7 +19,8 @@ const AUDIT_LABELS: Record<string, { text: string; color: string }> = {
   time_corrected: { text: "Time corrected", color: "badge-blue" },
   missing_clock_out_added: { text: "Missing clock-out added", color: "badge-ok" },
   review_approved: { text: "Review approved", color: "badge-ok" },
-  review_rejected: { text: "Review rejected", color: "badge-bad" },
+     review_rejected: { text: "Review rejected", color: "badge-bad" },
+     record_voided: { text: "Record voided", color: "badge-bad" },
 };
 
 function fmt(iso: string, tz: string) {
@@ -105,7 +106,7 @@ export default async function SessionDetailPage({
 
   const byUser = new Map<string, { in?: Ev; out?: Ev }>();
   for (const e of (events ?? []) as Ev[]) {
-    if (e.status === "rejected") continue;
+    if (e.status === "rejected" || e.status === "voided") continue;
     const row = byUser.get(e.user_id) ?? {};
     if (e.action === "clock_in") row.in = e;
     else row.out = e;
@@ -178,6 +179,17 @@ export default async function SessionDetailPage({
        redirect(path);
      }
 
+          async function voidRecord(formData: FormData) {
+       "use server";
+       const supabase = await createClient();
+       const { error } = await supabase.rpc("void_event", {
+         p_event: String(formData.get("event_id")),
+         p_reason: String(formData.get("reason") ?? ""),
+       });
+       if (error) redirect(`${path}?error=${encodeURIComponent(error.message)}`);
+       redirect(path);
+     }
+
      const evCell = (ev?: Ev) =>
     ev ? (
       <div className="flex flex-col gap-1">
@@ -207,7 +219,14 @@ export default async function SessionDetailPage({
               className="neu-input"
             />
             <button className="neu-btn neu-btn-sm neu-btn-primary">
-              Save correction
+                 Save correction
+               </button>
+               <button
+                 formAction={voidRecord}
+                 formNoValidate
+                 className="neu-btn neu-btn-sm neu-btn-danger"
+               >
+                 Void this record
             </button>
           </form>
         </details>

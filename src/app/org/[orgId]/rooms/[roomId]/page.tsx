@@ -64,6 +64,11 @@ export default async function RoomPage({
             Reports
           </Link>
           {isOrgAdmin && (
+            <Link href={`${path}/edit`} className="neu-btn">
+              Edit room
+            </Link>
+          )}
+          {isOrgAdmin && (
             <Link href={`${path}/location`} className="neu-btn">
               Location
             </Link>

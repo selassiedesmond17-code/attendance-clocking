@@ -8,7 +8,7 @@ import {
 } from "@/lib/notify";
 import { siteUrl } from "@/lib/mail";
 
-export type EmailStatus = "ok" | "pending" | "rejected" | "not_registered" | "error";
+export type EmailStatus = "ok" | "pending" | "rejected" | "not_registered" | "superadmin" | "error";
 
 // Is this email registered in any organization?
 export async function checkEmailAction(email: string): Promise<EmailStatus> {
